@@ -30,6 +30,7 @@
   - [Compatibility matrix](#compatibility-matrix)
   - [Roadmap](#roadmap)
   - [Contributing](#contributing)
+  - [Release Notes](#release-notes)
   - [License](#license)
 
 ---
@@ -80,15 +81,6 @@ See **[When to use dedicated scanners](#when-to-use-dedicated-scanners)** for to
 ```powershell
 Install-Module TLSleuth -Scope CurrentUser
 Import-Module TLSleuth
-```
-
-**From source** (clone this repo):
-
-```powershell
-# From repo root
-Import-Module "$PWD\TLSleuth.psd1" -Force
-# or
-Import-Module "$PWD\TLSleuth.psm1" -Force
 ```
 
 > **Recommended:** PowerShell 7+.
@@ -310,20 +302,43 @@ PRs welcome! Please:
 
 2. Follow the structure:
 
-   ```
-   source/
-     classes/
-     private/   # one function per file (internal helpers)
-     public/    # exported commands
-     tests/     # Pester tests (use mocks/helpers)
-       helpers/
-   ```
+    ```
+    examples/    # scripts demonstrating usage
+    source/
+        classes/
+        private/   # one function per file (internal helpers)
+        public/    # exported commands
+        tests/     # Pester tests (use mocks/helpers)
+        helpers/
+    ```
 
 3. **Include tests** (prefer mocks; gate live tests behind env vars).
 
 4. Keep outputs **stable & typed** (collections as arrays, not `$null`).
 
 5. Run `Invoke-Pester -Path source/tests -Output Detailed` before submitting.
+
+---
+
+## Release Notes
+> ### 1.0.2 (13-Sep-2025)
+> * CHANGE: Rename SNI override parameter from **-ServerName** to **-TargetHost**
+> * CHANGE: Pipeline binding tightened
+>  - `Hostname`: accepts from pipeline (by value & property name)
+>  - `Port`, `TargetHost`: accept **by property name** only
+> * IMPROVED: Update Alias for **-TargetHost** to SNI and ServerName
+> * ADD: `examples\Check-CertExpiry.ps1`
+
+> ### 1.0.1 (06-Sep-2025)
+> * Add MIT License
+> * Add TLSleuth Icon and Site details to manifest
+
+> ### 1.0.0 (05-Sep-2025)
+> * Get-TLSleuthCertificate: fetch TLS handshake + certificate details
+> * Optional chain build and revocation check
+> * Extract SANs, AIA, CRL Distribution Points
+> * Structured, script-friendly output; verbose diagnostics
+> * Pester tests with mocks; optional integration tests
 
 ---
 

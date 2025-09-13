@@ -14,7 +14,7 @@ function Get-TLSleuthCertificate {
     TCP port to connect to. Defaults to 443.
 
 .PARAMETER ServerName
-    SNI server name (TargetHost). Defaults to -Host.
+    (SNI) Server Name Indication (TargetHost). Defaults to -Hostname
 
 .PARAMETER TlsProtocols
     TLS protocol(s) to allow. Defaults to SystemDefault.
@@ -37,18 +37,26 @@ function Get-TLSleuthCertificate {
 [CmdletBinding()]
     [OutputType([pscustomobject], [System.Security.Cryptography.X509Certificates.X509Certificate2])]
     param(
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [Alias('DnsName','ComputerName','Target','Name','CN')]
+        # Accepts strings directly from the pipeline AND by matching property name
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Alias('Host','DnsName','ComputerName','Target','Name')]
+        [ValidateNotNullOrEmpty()]
         [string]$Hostname,
 
+        # Accepts values from objects with a matching property name in the pipeline
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [ValidateRange(1,65535)]
         [int]$Port = 443,
-        [string]$ServerName,
+
+        # Accepts values from objects with a matching property name in the pipeline
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [Alias('SNI','ServerName')]
+        [string]$TargetHost,
 
         [ValidateSet('SystemDefault','Ssl3','Tls','Tls11','Tls12','Tls13')]
         [string[]]$TlsProtocols = @('SystemDefault'),
 
         [int]$TimeoutSec = 10,
-
         [switch]$IncludeChain,
         [switch]$CheckRevocation,
         [switch]$RawCertificate
@@ -65,7 +73,7 @@ function Get-TLSleuthCertificate {
     process {
         $processed++
         Write-Verbose "[$fn] Processing Host=$Hostname"
-        $targetHost = if ($ServerName) { $ServerName } else { $Hostname }
+        $targetHost = if ($TargetHost) { $TargetHost } else { $Hostname }
         if ([string]::IsNullOrWhiteSpace($targetHost)) {
             throw "ServerName/Host is empty."
         }
