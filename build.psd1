@@ -3,14 +3,14 @@
 #
 
 @{
-    Path = "./Source/TLSleuth.psd1"
+    Path = "./source/TLSleuth.psd1"
 
     UnversionedOutputDirectory = $true
 
     SourceDirectories = @(
-        "[Ee]num", "[Cc]lasses", "[Pp]rivate", "[Pp]ublic","[Gg]enerated"
+        "[Pp]rivate", "[Pp]ublic"
     )
 
-    PublicFilter = @("[Pp]ublic/*.ps1","[Gg]enerated/*.ps1")
+    PublicFilter = @("[Pp]ublic/*.ps1")
 
 }

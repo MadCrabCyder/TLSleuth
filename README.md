@@ -1,331 +1,281 @@
 # TLSleuth
 
-**TLSleuth** is a PowerShell module for quickly inspecting TLS/SSL endpoints and certificates from the shell or in scripts. It’s a pragmatic, scriptable helper—**not** a full-blown TLS scanner.
+**TLSleuth** is an open-source PowerShell module for inspecting TLS
+endpoints and certificate details from scripts or the command line.
 
-* 🔎 Fetch a server’s certificate and handshake details
-* 📋 See the negotiated TLS protocol and (when supported) the cipher suite
-* 🧩 Parse SANs, AIA and CDP URLs, and basic chain/trust information
-* 🧪 Built with unit tests and a clean, mockable design
+It provides clean, structured, script-friendly output for operators,
+engineers, and automation pipelines that need reliable TLS insight.
 
-> Need deep scanning (cipher enumeration, vulnerability tests, ALPN, etc.)? See **[When to use dedicated scanners](#when-to-use-dedicated-scanners)**.
+🔎 Fetch a server's certificate and handshake details\
+📋 View negotiated TLS protocol and cipher information\
+⚙ Designed for automation and testing
 
----
-
-## Table of Contents
-
-- [TLSleuth](#tlsleuth)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Limitations (by design \& platform)](#limitations-by-design--platform)
-  - [Install](#install)
-  - [Quick Start](#quick-start)
-  - [Commands](#commands)
-    - [`Get-TLSleuthCertificate` *(public)*](#get-tlsleuthcertificate-public)
-    - [Private helpers (internal, unit-testable)](#private-helpers-internal-unit-testable)
-  - [Output shape](#output-shape)
-  - [How it works](#how-it-works)
-  - [Testing](#testing)
-  - [When to use dedicated scanners](#when-to-use-dedicated-scanners)
-  - [Security \& ethics](#security--ethics)
-  - [Compatibility matrix](#compatibility-matrix)
-  - [Roadmap](#roadmap)
-  - [Contributing](#contributing)
-  - [Release Notes](#release-notes)
-  - [License](#license)
-
----
+------------------------------------------------------------------------
 
 ## Features
 
-* **SNI-aware**: uses SNI automatically based on `-Hostname` (or `-ServerName` override).
-* **Protocol selection**: constrain to `Tls12`, `Tls13`, etc. (OS/runtime permitting).
-* **Certificate details**: Subject, Subject CN, *Primary DNS name* (SAN-first), SANs\[], issuer, validity, signature/public key algorithms, key size, thumbprint, self-signed boolean.
-* **Chain/trust**: optional local chain build with status details.
-* **Extension parsing**: DNS SANs, AIA URLs, CRL Distribution Point URLs (empty arrays when absent).
-* **Verbose diagnostics**: `-Verbose` prints begin/end + timings per helper.
-* **Script-friendly**: stable object model; safe arrays (never `$null` for collections).
-* **Well-tested**: Pester tests use mocks; optional live (integration) tests.
+- **SNI-aware** -- Automatically uses SNI based on `-Hostname` (or
+    `-TargetHost` override).
+- **Protocol selection** -- Constrain to `Tls12`, `Tls13`, etc.
+    (OS/runtime permitting).
+- **Structured output** -- Stable object model with custom
+    `PSTypeName`.
+- **Pipeline support** -- Designed for batch processing.
+- **Verbose diagnostics** -- `-Verbose` provides helper-level timing
+    insight.
+- **Safe collections** -- Arrays are never `$null`.
+- **Tested** -- Unit tests with mocks; optional integration tests.
 
----
+## New Feature for 2.0.0 - Explicit Transport Support
 
-## Limitations (by design & platform)
+- Added support for specifying the transport type
+- New transport option: `SmtpStartTls`
 
-TLSleuth rides on .NET and the OS TLS stack (SChannel on Windows). That implies:
+You can now retrieve certificates from SMTP servers using `STARTTLS` negotiation, rather than assuming implicit TLS (e.g., SMTPS on port 465).
 
-* **No full cipher enumeration**
-  `SslStream` does **not** let you supply an exact cipher list; the negotiated cipher is whatever the client/OS offered and the server selected. TLSleuth reports **what was negotiated**, not the full set the server supports.
+This allows TLSleuth to:
+- Connect to SMTP services on port 25 or 587
+- Issue the STARTTLS command
+- Upgrade the connection to TLS
+- Retrieve certificate and negotiated TLS details
 
-* **Cipher visibility varies**
+------------------------------------------------------------------------
 
-  * .NET 5+/PowerShell 7+: `SslStream.NegotiatedCipherSuite` (named suite).
-  * .NET Framework/PS 5.1: only algorithm names/strength (coarser detail).
+- [TLSleuth](#tlsleuth)
+  - [Features](#features)
+  - [New Feature for 2.0.0 - Explicit Transport Support](#new-feature-for-200---explicit-transport-support)
+- [Platform Notes \& Design Constraints](#platform-notes--design-constraints)
+  - [Cipher Enumeration](#cipher-enumeration)
+  - [Cipher Visibility Differences](#cipher-visibility-differences)
+  - [TLS 1.3 Support](#tls-13-support)
+- [Installation](#installation)
+  - [From PowerShell Gallery](#from-powershell-gallery)
+- [Quick Start](#quick-start)
+- [Output Model](#output-model)
+- [Architecture Overview](#architecture-overview)
+  - [Project Layout](#project-layout)
+- [Building from Source](#building-from-source)
+  - [Requirements](#requirements)
+  - [Build](#build)
+- [Testing](#testing)
+  - [Run All Tests](#run-all-tests)
+- [Contributing](#contributing)
+  - [Guidelines](#guidelines)
+- [License](#license)
+- [Release Notes](#release-notes)
+------------------------------------------------------------------------
+# Platform Notes & Design Constraints
 
-* **TLS 1.3 availability** depends on OS/runtime (e.g., older Windows & PS 5.1 don’t have it).
+TLSleuth relies on .NET and the OS TLS stack (SChannel on Windows).
 
-* **Revocation checks** (`-CheckRevocation`) rely on OS chain engine; may be slow or blocked by proxies/firewalls.
+## Cipher Enumeration
 
-* **SAN parsing**
-  On newer .NET, TLSleuth uses `X509Certificate2.DnsNameList`. Otherwise it parses formatted SAN text robustly (DNS names only).
+`SslStream` does **not** allow specifying an exact cipher list. TLSleuth
+reports:
 
-* **Not a vulnerability scanner**
-  TLSleuth does **not** test for known TLS CVEs, renegotiation/compression weaknesses, ALPN/H2 behavior, session resumption/tickets, curve ordering, etc.
+✔ The negotiated cipher\
+❌ Not the full set supported by the server
 
-See **[When to use dedicated scanners](#when-to-use-dedicated-scanners)** for tool recommendations.
+## Cipher Visibility Differences
 
----
+| Runtime                 | Detail Level                                        |
+| ----------------------- | --------------------------------------------------- |
+| PowerShell 7+ (.NET 5+) | Full named cipher suite via `NegotiatedCipherSuite` |
+| Windows PowerShell 5.1  | Algorithm + strength only                           |
+## TLS 1.3 Support
 
-## Install
+Depends on OS and runtime support. Older Windows versions and PS 5.1 may
+not support TLS 1.3.
 
-**From the PowerShell Gallery** (once published):
+------------------------------------------------------------------------
 
-```powershell
+# Installation
+
+## From PowerShell Gallery
+
+``` powershell
 Install-Module TLSleuth -Scope CurrentUser
 Import-Module TLSleuth
 ```
 
-> **Recommended:** PowerShell 7+.
-> **Supported:** Windows PowerShell 5.1 (with reduced TLS/cipher detail).
+Recommended: **PowerShell 7+**\
+Supported: Windows PowerShell 5.1 (reduced TLS/cipher detail)
 
----
+------------------------------------------------------------------------
 
-## Quick Start
+# Quick Start
 
-```powershell
-# Fetch cert + handshake details
-Get-TLSleuthCertificate -Hostname example.com
+``` powershell
+# Fetch certificate + handshake details
+Get-TLSleuthCertificate -Hostname github.com
 
-# Constrain protocol to TLS 1.2
-Get-TLSleuthCertificate -Hostname example.com -TlsProtocols Tls12
+# Constrain protocol
+Get-TLSleuthCertificate -Hostname google.com -TlsProtocols Tls12
 
-# Include local chain build + revocation checks
-Get-TLSleuthCertificate -Hostname example.com -IncludeChain -CheckRevocation
-
-# Pipeline support
+# Pipeline usage
 'github.com','microsoft.com' |
-  Get-TLSleuthCertificate -IncludeChain |
-  Select Host,Protocol,CipherSuite,@{n='PrimaryDNS';e={$_.Certificate.PrimaryDnsName}},IsTrusted
+  Get-TLSleuthCertificate |
+  Select Hostname, NegotiatedProtocol, CipherAlgorithm, CipherStrength, NotAfter
 
-# Verbose tracing (timings per helper)
-Get-TLSleuthCertificate -Hostname example.com -Verbose
+# Verbose tracing
+Get-TLSleuthCertificate -Hostname microsoft.com -Verbose
+
+# New in V2.0.0 - REtrieve certificate from SMTP server
+Get-TLSleuthCertificate -Hostname smtp.gmail.com -port 25 -Transport SmtpStartTls
+
 ```
 
-> If you connect by IP but need proper SNI, pass `-ServerName example.com`.
+> When connecting by IP but requiring proper SNI, use `-TargetHost`.
 
----
+------------------------------------------------------------------------
 
-## Commands
+# Output Model
 
-### `Get-TLSleuthCertificate` *(public)*
+TLSleuth returns a structured object:
 
-Connects to an endpoint and returns a structured report:
+Example:
 
-* **Endpoint:** Host, Port, Connected IP, SNI
-* **Handshake:** Protocol, cipher suite (if supported), hash, key exchange, strength
-* **Certificate:** Subject, SubjectCN, PrimaryDnsName, SANs\[], Issuer, Serial, Thumbprint, NotBefore/After, Signature/PublicKey algorithms, KeySize, IsSelfSigned
-* **Chain:** IsTrusted, ChainSubjects\[], ChainStatus\[]
-* **ValidationErrors\[]:** from handshake callback (informational)
-* **RawCertificate:** the `X509Certificate2` (available via `-RawCertificate`)
-
-**Key parameters**
-
-* `-Hostname <string>` (pipeline). Aliases: `-Host`, `-DnsName`, `-ComputerName`, `-Target`, `-Name`, `-CN`
-* `-Port <int>` (default: 443)
-* `-ServerName <string>` (SNI override)
-* `-TlsProtocols <string[]>` (e.g., `SystemDefault`, `Tls12`, `Tls13`)
-* `-IncludeChain`
-* `-CheckRevocation`
-* `-RawCertificate`
-
-### Private helpers (internal, unit-testable)
-
-* `Resolve-Endpoint -Hostname` → IP or `$null`
-* `Connect-TcpWithTimeout -Hostname -Port -TimeoutMs` → `{ TcpClient, NetworkStream }`
-* `Start-TlsHandshake -NetworkStream -TargetHostname -Protocols [-CheckRevocation]` → `{ SslStream, RemoteCertificate, CapturedChain, ValidationErrors[] }`
-* `Get-HandshakeInfo -SslStream` → `{ Protocol, CipherSuite, … }`
-* `Build-CertificateChain -Certificate [-CheckRevocation]` → `{ Chain, IsTrusted, ChainStatus[], ChainSubjects[] }`
-* `Format-ChainStatusStrings -ChainStatus[]` → string\[]
-* `Get-CertificateSAN -Cert` → DNS SANs (string\[])
-* `Get-AIAUrls -Cert` → AIA URLs (string\[])
-* `Get-CDPUrls -Cert` → CRL Distribution Point URLs (string\[])
-* `New-TLSleuthCertificateReport …` → final PSCustomObject
-
-> **Design contract:** any “list” output is **always an array** (possibly empty), never `$null`.
-
----
-
-## Output shape
-
-Example (abridged):
-
-```powershell
-[pscustomobject]@{
-  PSTypeName         = 'TLSleuth.CertificateReport'
-  Host               = 'example.com'
-  Port               = 443
-  ConnectedIp        = '93.184.216.34'
-  SNI                = 'example.com'
-  Protocol           = 'Tls12'
-  CipherSuite        = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
-  CipherStrengthBits = 128
-  HashAlgorithm      = 'SHA256'
-  KeyExchange        = 'ECDHE'
-  Certificate        = [pscustomobject]@{
-    Subject            = 'CN=example.com, O=Example Inc, C=US'
-    SubjectCN          = 'example.com'            # CN from Subject DN
-    PrimaryDnsName     = 'example.com'            # SAN-first, CN fallback
-    Issuer             = 'CN=Example CA'
-    NotBefore          = '...'
-    NotAfter           = '...'
-    DaysUntilExpiry    = 83
-    SignatureAlgorithm = 'sha256RSA'
-    PublicKeyAlgorithm = 'RSA'
-    KeySize            = 2048
-    SANs               = @('example.com','www.example.com')
-    AIA                = @('http://aia.example/...')
-    CRLDistribution    = @('http://crl.example/...')
-    IsSelfSigned       = $false
-  }
-  IsTrusted          = $true
-  ChainSubjects      = @('CN=example.com,...','CN=Example CA,...','CN=Root CA,...')
-  ChainStatus        = @()                         # empty means OK
-  ValidationErrors   = @()                         # handshake policy notes
-  RawCertificate     = [System.Security.Cryptography.X509Certificates.X509Certificate2]
-}
+``` powershell
+Hostname           : microsoft.com
+Port               : 443
+TargetHost         : microsoft.com
+Subject            : CN=microsoft.com, O=Microsoft Corporation...
+Issuer             : CN=Microsoft Azure RSA TLS Issuing CA 04...
+Thumbprint         : 40B3005534C15CC035B1F0061A813B8F91D1A02A
+NotBefore          : 4/02/2026 11:21:49 AM
+NotAfter           : 3/08/2026 10:21:49 AM
+IsValidNow         : True
+DaysUntilExpiry    : 155
+NegotiatedProtocol : Tls13
+CipherAlgorithm    : Aes256
+CipherStrength     : 256
+ElapsedMs          : 50
+Certificate        : X509Certificate2
 ```
 
----
+The object includes:
 
-## How it works
+- Certificate metadata
+- Validity status
+- Negotiated TLS protocol
+- Cipher algorithm & strength
+- Timing information
+- Raw `X509Certificate2` for advanced use
 
-TLSleuth composes small, focused functions:
+Designed for stable automation and predictable output contracts.
 
-1. **Resolve & connect** → `Resolve-Endpoint` + `Connect-TcpWithTimeout`
-2. **TLS handshake** → `Start-TlsHandshake` (SNI-aware `SslStream`; captures policy errors)
-3. **Gather details** → `Get-HandshakeInfo` + certificate field extraction + SAN/AIA/CDP helpers
-4. **Optional chain** → `Build-CertificateChain` (+ `Format-ChainStatusStrings`)
-5. **Assemble report** → `New-TLSleuthCertificateReport`
+------------------------------------------------------------------------
 
-**Design choices**
+# Architecture Overview
 
-* No global state; everything parameterized and **mockable**
-* **Verbose** begin/complete logs with timings in each helper (`-Verbose`)
-* **Arrays, not `$null`** for collections (safer pipes & counting)
+TLSleuth follows a **source-first modular design**:
 
----
+- One function per file
+- Clear separation of public vs private functions
+- Pester-driven development
+- Stable output contract
+- Minimal side effects
 
-## Testing
+## Project Layout
 
-We use **Pester 5** with **mocks** so unit tests run fast and hermetically.
+    TLSleuth/
+    ├── docs/
+    ├── examples/
+    ├── output/
+    └── source/
+        ├── private/
+        ├── public/
+        └── tests/
+            ├── integration/
+            └── unit/
 
-* Mock externalities: DNS, TCP, and handshake.
-* For mandatory typed params in mocks, return real types:
+------------------------------------------------------------------------
 
-  * `NetworkStream = [System.IO.MemoryStream]::new()`
-  * `SslStream     = [System.Net.Security.SslStream]::new([System.IO.MemoryStream]::new())`
-* In `-ParameterFilter`, use the **parameter variables** (`$Hostname`, `$Port`, `$TargetHostname`) rather than `$PSBoundParameters`.
-* Avoid `$Host` in tests (it’s a read-only automatic variable). Standardize on `-Hostname` in code and `$TestHostname` in tests.
+# Building from Source
 
-**Run tests**
+TLSleuth uses **ModuleBuilder (Build-Module)**.
 
-```powershell
-Invoke-Pester -Path 'source/tests' -Output Detailed
+The repository contains individual function files. During build:
+
+- Functions are merged into a single `.psm1`
+- The module manifest is generated/updated
+- Public functions are auto-exported
+- Build settings are read from `/build.psd1`
+- Compiled output is written to `/output`
+
+## Requirements
+
+``` powershell
+Install-Module ModuleBuilder -Scope CurrentUser
 ```
 
-**Optional live tests**
+## Build
 
-```powershell
-$env:TLSLEUTH_TEST_ENDPOINT = 'example.com'
-$env:TLSLEUTH_TEST_PORT     = '443'
-Invoke-Pester -Path 'source/tests' -Output Detailed
+From project root:
+
+``` powershell
+Build-Module
 ```
 
----
+Force clean rebuild:
 
-## When to use dedicated scanners
+``` powershell
+Build-Module -Clean
+```
 
-TLSleuth is great for quick snapshots and scripting. For **deep TLS analysis**, use:
+Do not modify files in `/output` directly.
 
-* **sslyze** — [https://github.com/nabla-c0d3/sslyze](https://github.com/nabla-c0d3/sslyze)
-  Cipher enumeration, TLS extensions, resumption, OCSP stapling, compression/renegotiation checks, ticket/ALPN/H2, more.
+------------------------------------------------------------------------
 
-* **sslscan** — [https://github.com/rbsec/sslscan](https://github.com/rbsec/sslscan)
-  Fast OpenSSL-based scanner; enumerates supported ciphers and protocols.
+# Testing
 
-* **testssl.sh** — [https://testssl.sh/](https://testssl.sh/)
-  Shell script + OpenSSL battery: weak ciphers, CVEs (Heartbleed/ROBOT/etc.), curves, ALPN, STARTTLS, more.
+TLSleuth uses **Pester**.
 
-**Switch to a scanner when you need:**
+## Run All Tests
 
-* **All supported ciphers/curves**, not just the negotiated one
-* **Vulnerability probing**
-* **ALPN/HTTP2**, session resumption, tickets analysis
-* Client profile policy checks across different TLS stacks
+``` powershell
+Invoke-Pester -Path ./source/tests -Output Detailed
+```
 
----
+Unit tests use mocks for network calls.\
+Integration tests perform live TLS handshakes and may require internet
+access.
 
-## Security & ethics
+------------------------------------------------------------------------
 
-* Only test systems you **own** or are **authorized** to assess.
-* Be mindful with `-CheckRevocation` (may trigger outbound CA/OCSP traffic).
-* Use conservative timeouts on production systems.
+# Contributing
 
----
+Contributions are welcome!
 
-## Compatibility matrix
+## Guidelines
 
-| Area                      | PowerShell 7+ (.NET 6/7)          | Windows PowerShell 5.1 (.NET Framework) |
-| ------------------------- | --------------------------------- | --------------------------------------- |
-| TLS 1.3                   | OS-dependent (e.g., Win 11/2022+) | No                                      |
-| Named cipher suite        | `SslStream.NegotiatedCipherSuite` | Not available                           |
-| SAN DNS list              | `X509Certificate2.DnsNameList`    | Not available (fallback parse)          |
-| Null-conditional operator | Yes                               | No (TLSleuth uses safe fallbacks)       |
+- One function per file
+- Public functions in `/source/public`
+- Private helpers in `/source/private`
+- Maintain structured output contract
+- Add Pester tests for new functionality
+- Run tests before submitting PR
 
----
+------------------------------------------------------------------------
 
-## Roadmap
+# License
 
-* `Test-TLSNegotiation` — iterate protocols; capture negotiated suites per protocol (best-effort)
-* `Test-TLSPort` — probe arbitrary ports for TLS capability (SMTP STARTTLS support later)
-* `Analyze-TLSChain` — optional AIA/CRL retrieval for richer diagnostics
-* Export/report helpers (JSON/CSV) and example dashboards
-* ASN.1 parsing for SAN/AIA/CDP on all runtimes (reduce text parsing)
+MIT --- see LICENSE
 
-Have ideas? Open an issue! 💡
+------------------------------------------------------------------------
 
----
+# Release Notes
+> ### 2.0.0 (28-Feb-2026)
+> **Major Refactor**
+> * Significant internal refactor to simplify and modularize helper functions
+> * Improved separation of transport, handshake, and certificate extraction logic
+> * Enhanced maintainability and extensibility of the TLS negotiation pipeline
 
-## Contributing
-
-PRs welcome! Please:
-
-1. Open an issue describing the change.
-
-2. Follow the structure:
-
-    ```
-    examples/    # scripts demonstrating usage
-    source/
-        classes/
-        private/   # one function per file (internal helpers)
-        public/    # exported commands
-        tests/     # Pester tests (use mocks/helpers)
-        helpers/
-    ```
-
-3. **Include tests** (prefer mocks; gate live tests behind env vars).
-
-4. Keep outputs **stable & typed** (collections as arrays, not `$null`).
-
-5. Run `Invoke-Pester -Path source/tests -Output Detailed` before submitting.
-
----
-
-## Release Notes
 > ### 1.0.2 (13-Sep-2025)
 > * CHANGE: Rename SNI override parameter from **-ServerName** to **-TargetHost**
 > * CHANGE: Pipeline binding tightened
->  - `Hostname`: accepts from pipeline (by value & property name)
->  - `Port`, `TargetHost`: accept **by property name** only
+>   * `Hostname`: accepts from pipeline (by value & property name)
+>   * `Port`, `TargetHost`: accept **by property name** only
 > * IMPROVED: Update Alias for **-TargetHost** to SNI and ServerName
 > * ADD: `examples\Check-CertExpiry.ps1`
 
@@ -339,13 +289,7 @@ PRs welcome! Please:
 > * Extract SANs, AIA, CRL Distribution Points
 > * Structured, script-friendly output; verbose diagnostics
 > * Pester tests with mocks; optional integration tests
+------------------------------------------------------------------------
 
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-Built with ❤️ for operators and scripters who need quick TLS insight from PowerShell. If you find TLSleuth useful, consider leaving a ⭐ on GitHub!
+Built with ❤️ for operators and automation engineers who need fast,
+reliable TLS visibility from PowerShell.
