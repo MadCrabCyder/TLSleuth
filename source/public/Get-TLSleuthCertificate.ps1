@@ -44,27 +44,6 @@ function Get-TLSleuthCertificate {
         $processed = 0
         $timeoutMs = $TimeoutSec * 1000
 
-        # foreach ($requiredFunction in @(
-        #     'ConvertTo-TlsProtocolOptions',
-        #     'Connect-TcpWithTimeout',
-        #     'Invoke-SmtpStartTlsNegotiation',
-        #     'Start-TlsHandshake',
-        #     'Get-RemoteCertificate',
-        #     'Test-TlsCertificateValidity',
-        #     'ConvertTo-TlsCertificateResult',
-        #     'Close-NetworkResources',
-        #     'Invoke-WithRetry'
-        # )) {
-        #     if (-not (Get-Command -Name $requiredFunction -ErrorAction SilentlyContinue)) {
-        #         $helperPath = Join-Path (Join-Path $PSScriptRoot '..\private') "$requiredFunction.ps1"
-        #         if (-not (Test-Path -Path $helperPath)) {
-        #             throw "Required helper function '$requiredFunction' was not found at path '$helperPath'."
-        #         }
-
-        #         . $helperPath
-        #     }
-        # }
-
         $sslProtocols = ConvertTo-TlsProtocolOptions -TlsProtocols $TlsProtocols
         Write-Verbose "[$fn] Begin (Transport=$Transport, TimeoutSec=$TimeoutSec, Protocols=$($TlsProtocols -join ','))"
 

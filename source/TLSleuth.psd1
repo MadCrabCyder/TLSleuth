@@ -8,7 +8,7 @@
 RootModule = '.\TLSleuth.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.0'
+ModuleVersion = '2.0.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop','Core')
@@ -107,7 +107,7 @@ PrivateData = @{
         LicenseUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/LICENSE'
 
         # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/MadCrabCyder/TLSleuthPS'
+        ProjectUri = 'https://tlsleuth.com/'
 
         # A URL to an icon representing this module.
         IconUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/source/assets/TLSleuth-icon.png'

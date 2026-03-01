@@ -6,9 +6,9 @@ endpoints and certificate details from scripts or the command line.
 It provides clean, structured, script-friendly output for operators,
 engineers, and automation pipelines that need reliable TLS insight.
 
-🔎 Fetch a server's certificate and handshake details\
-📋 View negotiated TLS protocol and cipher information\
-⚙ Designed for automation and testing
+- 🔎 Fetch a server's certificate and handshake details
+- 📋 View negotiated TLS protocol and cipher information
+- ⚙ Designed for automation and testing
 
 ------------------------------------------------------------------------
 
@@ -39,15 +39,14 @@ This allows TLSleuth to:
 - Upgrade the connection to TLS
 - Retrieve certificate and negotiated TLS details
 
+For more information see this page: [Implicit vs Explicit TLS](/blog/implicit-vs-explicit-tls.html)
+
 ------------------------------------------------------------------------
 
 - [TLSleuth](#tlsleuth)
   - [Features](#features)
   - [New Feature for 2.0.0 - Explicit Transport Support](#new-feature-for-200---explicit-transport-support)
-- [Platform Notes \& Design Constraints](#platform-notes--design-constraints)
-  - [Cipher Enumeration](#cipher-enumeration)
-  - [Cipher Visibility Differences](#cipher-visibility-differences)
-  - [TLS 1.3 Support](#tls-13-support)
+  - [Limitations and When to Use a Dedicated TLS Scanner](#limitations-and-when-to-use-a-dedicated-tls-scanner)
 - [Installation](#installation)
   - [From PowerShell Gallery](#from-powershell-gallery)
 - [Quick Start](#quick-start)
@@ -64,30 +63,20 @@ This allows TLSleuth to:
 - [License](#license)
 - [Release Notes](#release-notes)
 ------------------------------------------------------------------------
-# Platform Notes & Design Constraints
 
-TLSleuth relies on .NET and the OS TLS stack (SChannel on Windows).
+## Limitations and When to Use a Dedicated TLS Scanner
 
-## Cipher Enumeration
+TLSleuth is designed for practical, scriptable TLS inspection - retrieving the negotiated certificate, protocol, and cipher from PowerShell.
 
-`SslStream` does **not** allow specifying an exact cipher list. TLSleuth
-reports:
+Because it relies on `.NET SslStream` and the underlying OS TLS stack (SChannel on Windows), it has intentional limitations:
 
-✔ The negotiated cipher\
-❌ Not the full set supported by the server
+- It only shows the negotiated cipher suite (no full enumeration)
+- It cannot probe for TLS vulnerabilities (Heartbleed, ROBOT, etc.)
+- It cannot craft custom ClientHello messages or test fallback behavior
+- TLS version and cipher availability depend on OS policy
 
-## Cipher Visibility Differences
+For full TLS posture analysis, cipher enumeration, downgrade testing, and vulnerability scanning, use a [Dedicated TLS Scanner](/blog/dedicated-scanners.html)
 
-| Runtime                 | Detail Level                                        |
-| ----------------------- | --------------------------------------------------- |
-| PowerShell 7+ (.NET 5+) | Full named cipher suite via `NegotiatedCipherSuite` |
-| Windows PowerShell 5.1  | Algorithm + strength only                           |
-## TLS 1.3 Support
-
-Depends on OS and runtime support. Older Windows versions and PS 5.1 may
-not support TLS 1.3.
-
-------------------------------------------------------------------------
 
 # Installation
 
@@ -98,7 +87,7 @@ Install-Module TLSleuth -Scope CurrentUser
 Import-Module TLSleuth
 ```
 
-Recommended: **PowerShell 7+**\
+Recommended: **PowerShell 7+**
 Supported: Windows PowerShell 5.1 (reduced TLS/cipher detail)
 
 ------------------------------------------------------------------------
@@ -120,12 +109,11 @@ Get-TLSleuthCertificate -Hostname google.com -TlsProtocols Tls12
 # Verbose tracing
 Get-TLSleuthCertificate -Hostname microsoft.com -Verbose
 
-# New in V2.0.0 - REtrieve certificate from SMTP server
+# New in V2.0.0 - Retrieve certificate from SMTP server
 Get-TLSleuthCertificate -Hostname smtp.gmail.com -port 25 -Transport SmtpStartTls
-
 ```
 
-> When connecting by IP but requiring proper SNI, use `-TargetHost`.
+> When connecting by IP but requiring proper SNI, use `-TargetHost example.com`.
 
 ------------------------------------------------------------------------
 
@@ -237,7 +225,7 @@ TLSleuth uses **Pester**.
 Invoke-Pester -Path ./source/tests -Output Detailed
 ```
 
-Unit tests use mocks for network calls.\
+Unit tests use mocks for network calls.
 Integration tests perform live TLS handshakes and may require internet
 access.
 
