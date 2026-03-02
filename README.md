@@ -1,5 +1,10 @@
 # TLSleuth
 
+![Published Version](https://img.shields.io/powershellgallery/v/TLSleuth.svg?style=flat&logo=powershell&label=Published%20Version)
+![Downloads](https://img.shields.io/powershellgallery/dt/TLSleuth.svg?style=flat&logo=powershell&label=PSGallery%20Downloads)
+![Pester Tests](https://github.com/MadCrabCyder/TLSleuth/actions/workflows/pester-tests.yml/badge.svg)
+
+
 **TLSleuth** is an open-source PowerShell module for inspecting TLS
 endpoints and certificate details from scripts or the command line.
 
@@ -26,26 +31,30 @@ engineers, and automation pipelines that need reliable TLS insight.
 - **Safe collections** -- Arrays are never `$null`.
 - **Tested** -- Unit tests with mocks; optional integration tests.
 
-## New Feature for 2.0.0 - Explicit Transport Support
+## New Feature for Version 2 - Explicit Transport Support
 
 - Added support for specifying the transport type
 - New transport option: `SmtpStartTls`
+- New transport option: `ImapStartTls`
+- New transport option: `Pop3StartTls`
 
-You can now retrieve certificates from SMTP servers using `STARTTLS` negotiation, rather than assuming implicit TLS (e.g., SMTPS on port 465).
+You can now retrieve certificates from SMTP, IMAP, and POP3 servers using `STARTTLS`/`STLS` negotiation, rather than assuming implicit TLS (e.g., SMTPS on port 465, IMAPS on port 993, or POP3S on port 995).
 
 This allows TLSleuth to:
 - Connect to SMTP services on port 25 or 587
-- Issue the STARTTLS command
+- Connect to IMAP services on port 143
+- Connect to POP3 services on port 110
+- Issue the STARTTLS/STLS command
 - Upgrade the connection to TLS
 - Retrieve certificate and negotiated TLS details
 
-For more information see this page: [Implicit vs Explicit TLS](/blog/implicit-vs-explicit-tls.html)
+For more information see this page: [Implicit vs Explicit TLS](https://tlsleuth.com/blog/implicit-vs-explicit-tls.html)
 
 ------------------------------------------------------------------------
 
 - [TLSleuth](#tlsleuth)
   - [Features](#features)
-  - [New Feature for 2.0.0 - Explicit Transport Support](#new-feature-for-200---explicit-transport-support)
+  - [New Feature for Version 2 - Explicit Transport Support](#new-feature-for-version-2---explicit-transport-support)
   - [Limitations and When to Use a Dedicated TLS Scanner](#limitations-and-when-to-use-a-dedicated-tls-scanner)
 - [Installation](#installation)
   - [From PowerShell Gallery](#from-powershell-gallery)
@@ -75,7 +84,7 @@ Because it relies on `.NET SslStream` and the underlying OS TLS stack (SChannel 
 - It cannot craft custom ClientHello messages or test fallback behavior
 - TLS version and cipher availability depend on OS policy
 
-For full TLS posture analysis, cipher enumeration, downgrade testing, and vulnerability scanning, use a [Dedicated TLS Scanner](/blog/dedicated-scanners.html)
+For full TLS posture analysis, cipher enumeration, downgrade testing, and vulnerability scanning, use a [Dedicated TLS Scanner](https://tlsleuth.com/blog/dedicated-scanners.html)
 
 
 # Installation
@@ -111,6 +120,16 @@ Get-TLSleuthCertificate -Hostname microsoft.com -Verbose
 
 # New in V2.0.0 - Retrieve certificate from SMTP server
 Get-TLSleuthCertificate -Hostname smtp.gmail.com -port 25 -Transport SmtpStartTls
+
+# New in V2.1.0 - Retrieve certificate from IMAP server
+Get-TLSleuthCertificate -Hostname outlook.office365.com -Port 143 -Transport ImapStartTls
+
+# New in V2.1.0 - Retrieve certificate from POP3 server
+Get-TLSleuthCertificate -Hostname pop.gmail.com -Port 110 -Transport Pop3StartTls
+
+# Retrieve an invalid certificate but keep validation diagnostics
+Get-TLSleuthCertificate -Hostname wrong.host.badssl.com -SkipCertificateValidation |
+  Select Hostname, CertificateValidationPassed, CertificatePolicyErrors, CertificatePolicyErrorFlags
 ```
 
 > When connecting by IP but requiring proper SNI, use `-TargetHost example.com`.
@@ -124,21 +143,25 @@ TLSleuth returns a structured object:
 Example:
 
 ``` powershell
-Hostname           : microsoft.com
-Port               : 443
-TargetHost         : microsoft.com
-Subject            : CN=microsoft.com, O=Microsoft Corporation...
-Issuer             : CN=Microsoft Azure RSA TLS Issuing CA 04...
-Thumbprint         : 40B3005534C15CC035B1F0061A813B8F91D1A02A
-NotBefore          : 4/02/2026 11:21:49 AM
-NotAfter           : 3/08/2026 10:21:49 AM
-IsValidNow         : True
-DaysUntilExpiry    : 155
-NegotiatedProtocol : Tls13
-CipherAlgorithm    : Aes256
-CipherStrength     : 256
-ElapsedMs          : 50
-Certificate        : X509Certificate2
+Hostname                    : microsoft.com
+Port                        : 443
+TargetHost                  : microsoft.com
+Subject                     : CN=microsoft.com, O=Microsoft Corporation...
+Issuer                      : CN=Microsoft Azure RSA TLS Issuing CA 04...
+Thumbprint                  : 40B3005534C15CC035B1F0061A813B8F91D1A02A
+NotBefore                   : 4/02/2026 11:21:49 AM
+NotAfter                    : 3/08/2026 10:21:49 AM
+IsValidNow                  : True
+DaysUntilExpiry             : 155
+CertificateValidationPassed : True
+CertificatePolicyErrors     : None
+CertificatePolicyErrorFlags : {}
+CertificateChainStatus      : {}
+NegotiatedProtocol          : Tls13
+CipherAlgorithm             : Aes256
+CipherStrength              : 256
+ElapsedMs                   : 50
+Certificate                 : X509Certificate2
 ```
 
 The object includes:
@@ -253,6 +276,12 @@ MIT --- see LICENSE
 ------------------------------------------------------------------------
 
 # Release Notes
+
+> ### 2.1.0 (02-Mar-2026)
+> * Added `ImapStartTls` and `Pop3StartTls` transports
+> * Refactored STARTTLS/STLS negotiation into shared reusable helpers
+> * You can now retrieve invalid certs (when skipping validation) and still see explicit validation failure details
+
 > ### 2.0.0 (28-Feb-2026)
 > **Major Refactor**
 > * Significant internal refactor to simplify and modularize helper functions
