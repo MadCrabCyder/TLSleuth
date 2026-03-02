@@ -28,52 +28,6 @@ function Invoke-SmtpStartTlsNegotiation {
         throw [System.InvalidOperationException]::new('SMTP STARTTLS negotiation requires a readable and writable stream.')
     }
 
-    function Read-SmtpLine {
-        param(
-            [Parameter(Mandatory)]
-            [System.IO.Stream]$Stream,
-
-            [Parameter(Mandatory)]
-            [int]$ReadTimeoutMs
-        )
-
-        $bytes = [System.Collections.Generic.List[byte]]::new()
-        $buffer = New-Object byte[] 1
-
-        while ($true) {
-            try {
-                $read = $Stream.Read($buffer, 0, 1)
-            }
-            catch [System.IO.IOException] {
-                $inner = $_.Exception.InnerException
-                if ($inner -is [System.Net.Sockets.SocketException] -and
-                    $inner.SocketErrorCode -eq [System.Net.Sockets.SocketError]::TimedOut) {
-                    throw [System.TimeoutException]::new("SMTP negotiation timed out after ${ReadTimeoutMs}ms.")
-                }
-                throw
-            }
-
-            if ($read -eq 0) {
-                throw [System.IO.EndOfStreamException]::new('SMTP server closed the connection unexpectedly.')
-            }
-
-            $b = $buffer[0]
-            if ($b -eq 10) {
-                break
-            }
-
-            if ($b -ne 13) {
-                $bytes.Add($b)
-            }
-
-            if ($bytes.Count -gt 4096) {
-                throw [System.InvalidOperationException]::new('SMTP response line exceeded 4096 bytes.')
-            }
-        }
-
-        [System.Text.Encoding]::ASCII.GetString($bytes.ToArray())
-    }
-
     function Read-SmtpResponse {
         param(
             [Parameter(Mandatory)]
@@ -84,7 +38,7 @@ function Invoke-SmtpStartTlsNegotiation {
         )
 
         $lines = [System.Collections.Generic.List[string]]::new()
-        $firstLine = Read-SmtpLine -Stream $Stream -ReadTimeoutMs $ReadTimeoutMs
+        $firstLine = Read-TextProtocolLine -Stream $Stream -ReadTimeoutMs $ReadTimeoutMs -ProtocolName 'SMTP'
         $lines.Add($firstLine)
 
         $statusCode = 0
@@ -97,7 +51,7 @@ function Invoke-SmtpStartTlsNegotiation {
 
         if ($isMultiline) {
             while ($true) {
-                $line = Read-SmtpLine -Stream $Stream -ReadTimeoutMs $ReadTimeoutMs
+                $line = Read-TextProtocolLine -Stream $Stream -ReadTimeoutMs $ReadTimeoutMs -ProtocolName 'SMTP'
                 $lines.Add($line)
 
                 if ($line.Length -ge 4 -and $line.StartsWith($statusPrefix) -and $line[3] -eq '-') {
@@ -119,73 +73,47 @@ function Invoke-SmtpStartTlsNegotiation {
         }
     }
 
-    function Send-SmtpCommand {
-        param(
-            [Parameter(Mandatory)]
-            [System.IO.Stream]$Stream,
-
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [string]$Command
-        )
-
-        $payload = [System.Text.Encoding]::ASCII.GetBytes("$Command`r`n")
-        $Stream.Write($payload, 0, $payload.Length)
-        $Stream.Flush()
-    }
-
-    $originalReadTimeout = $null
-    $originalWriteTimeout = $null
-    $timeoutsApplied = $false
-
     try {
-        if ($NetworkStream.CanTimeout) {
-            $originalReadTimeout = $NetworkStream.ReadTimeout
-            $originalWriteTimeout = $NetworkStream.WriteTimeout
-
-            $NetworkStream.ReadTimeout = $TimeoutMs
-            $NetworkStream.WriteTimeout = $TimeoutMs
-            $timeoutsApplied = $true
-        }
-
-        $banner = Read-SmtpResponse -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs
-        if ($banner.Code -ne 220) {
-            throw [System.InvalidOperationException]::new("SMTP server did not return 220 greeting. Received: $($banner.Message)")
-        }
-        Write-Verbose "[$fn] Received SMTP greeting code $($banner.Code)."
-
-        Send-SmtpCommand -Stream $NetworkStream -Command "EHLO $EhloName"
-        $ehloResponse = Read-SmtpResponse -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs
-        if ($ehloResponse.Code -ne 250) {
-            throw [System.InvalidOperationException]::new("SMTP EHLO failed. Received: $($ehloResponse.Message)")
-        }
-        Write-Verbose "[$fn] EHLO accepted with code $($ehloResponse.Code)."
-
-        $supportsStartTls = $false
-        foreach ($line in $ehloResponse.Lines) {
-            if ($line.Length -lt 4) { continue }
-            $capability = $line.Substring(4).Trim()
-            if ($capability -match '^(?i)STARTTLS(?:\s|$)') {
-                $supportsStartTls = $true
-                break
+        Invoke-WithStreamTimeout -Stream $NetworkStream -TimeoutMs $TimeoutMs -ScriptBlock {
+            $banner = Read-SmtpResponse -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs
+            if ($banner.Code -ne 220) {
+                throw [System.InvalidOperationException]::new("SMTP server did not return 220 greeting. Received: $($banner.Message)")
             }
-        }
+            Write-Verbose "[$fn] Received SMTP greeting code $($banner.Code)."
 
-        if (-not $supportsStartTls) {
-            throw [System.InvalidOperationException]::new('SMTP server does not advertise STARTTLS in EHLO response.')
-        }
+            Send-TextProtocolCommand -Stream $NetworkStream -Command "EHLO $EhloName"
+            $ehloResponse = Read-SmtpResponse -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs
+            if ($ehloResponse.Code -ne 250) {
+                throw [System.InvalidOperationException]::new("SMTP EHLO failed. Received: $($ehloResponse.Message)")
+            }
+            Write-Verbose "[$fn] EHLO accepted with code $($ehloResponse.Code)."
 
-        Send-SmtpCommand -Stream $NetworkStream -Command 'STARTTLS'
-        $startTlsResponse = Read-SmtpResponse -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs
-        if ($startTlsResponse.Code -ne 220) {
-            throw [System.InvalidOperationException]::new("SMTP STARTTLS command was not accepted. Received: $($startTlsResponse.Message)")
-        }
-        Write-Verbose "[$fn] STARTTLS accepted with code $($startTlsResponse.Code)."
+            $supportsStartTls = $false
+            foreach ($line in $ehloResponse.Lines) {
+                if ($line.Length -lt 4) { continue }
+                $capability = $line.Substring(4).Trim()
+                if ($capability -match '^(?i)STARTTLS(?:\s|$)') {
+                    $supportsStartTls = $true
+                    break
+                }
+            }
 
-        [PSCustomObject]@{
-            GreetingCode = $banner.Code
-            EhloCode     = $ehloResponse.Code
-            StartTlsCode = $startTlsResponse.Code
+            if (-not $supportsStartTls) {
+                throw [System.InvalidOperationException]::new('SMTP server does not advertise STARTTLS in EHLO response.')
+            }
+
+            Send-TextProtocolCommand -Stream $NetworkStream -Command 'STARTTLS'
+            $startTlsResponse = Read-SmtpResponse -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs
+            if ($startTlsResponse.Code -ne 220) {
+                throw [System.InvalidOperationException]::new("SMTP STARTTLS command was not accepted. Received: $($startTlsResponse.Message)")
+            }
+            Write-Verbose "[$fn] STARTTLS accepted with code $($startTlsResponse.Code)."
+
+            [PSCustomObject]@{
+                GreetingCode = $banner.Code
+                EhloCode     = $ehloResponse.Code
+                StartTlsCode = $startTlsResponse.Code
+            }
         }
     }
     catch {
@@ -193,10 +121,6 @@ function Invoke-SmtpStartTlsNegotiation {
         throw
     }
     finally {
-        if ($timeoutsApplied) {
-            try { $NetworkStream.ReadTimeout = $originalReadTimeout } catch {}
-            try { $NetworkStream.WriteTimeout = $originalWriteTimeout } catch {}
-        }
         $sw.Stop()
         Write-Verbose "[$fn] Complete in $($sw.Elapsed)"
     }

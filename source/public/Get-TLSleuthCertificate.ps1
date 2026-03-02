@@ -21,7 +21,7 @@ function Get-TLSleuthCertificate {
         [string]$TargetHost,
 
         [Parameter(ValueFromPipelineByPropertyName)]
-        [ValidateSet('ImplicitTls','SmtpStartTls')]
+        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls')]
         [string]$Transport = 'ImplicitTls',
 
         [Parameter(ValueFromPipelineByPropertyName)]
@@ -34,7 +34,7 @@ function Get-TLSleuthCertificate {
         [ValidateRange(1,600)]
         [int]$TimeoutSec = 10,
 
-        [switch]$SkipCertificateValidation
+        [switch]$SkipCertificateValidation = $true
 
     )
 
@@ -78,6 +78,16 @@ function Get-TLSleuthCertificate {
                     -EhloName $ehloName `
                     -TimeoutMs $timeoutMs | Out-Null
             }
+            elseif ($Transport -eq 'ImapStartTls') {
+                Invoke-ImapStartTlsNegotiation `
+                    -NetworkStream $tcpConnection.NetworkStream `
+                    -TimeoutMs $timeoutMs | Out-Null
+            }
+            elseif ($Transport -eq 'Pop3StartTls') {
+                Invoke-Pop3StartTlsNegotiation `
+                    -NetworkStream $tcpConnection.NetworkStream `
+                    -TimeoutMs $timeoutMs | Out-Null
+            }
 
             $tlsSession = Start-TlsHandshake `
                 -NetworkStream $tcpConnection.NetworkStream `
@@ -96,6 +106,10 @@ function Get-TLSleuthCertificate {
                 -TargetHost $target `
                 -Certificate $certificate `
                 -Validity $validity `
+                -CertificateValidationPassed $tlsSession.CertificateValidationPassed `
+                -CertificatePolicyErrors $tlsSession.CertificatePolicyErrors `
+                -CertificatePolicyErrorFlags $tlsSession.CertificatePolicyErrorFlags `
+                -CertificateChainStatus $tlsSession.CertificateChainStatus `
                 -NegotiatedProtocol $tlsSession.NegotiatedProtocol `
                 -CipherAlgorithm $tlsSession.CipherAlgorithm `
                 -CipherStrength $tlsSession.CipherStrength `

@@ -6,12 +6,12 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Read-TextProtocolLine.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Send-TextProtocolCommand.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-WithStreamTimeout.ps1')
-    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsNegotiation.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-RemoteCertificate.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Close-NetworkResources.ps1')
 
-    function Send-SmtpResponses {
+    function Send-ImapResponses {
         param(
             [Parameter(Mandatory)]
             [System.IO.Stream]$Stream,
@@ -26,7 +26,7 @@ BeforeAll {
         $Stream.Flush()
     }
 
-    function Read-SmtpLine {
+    function Read-ImapLine {
         param(
             [Parameter(Mandatory)]
             [System.IO.Stream]$Stream
@@ -38,7 +38,7 @@ BeforeAll {
         while ($true) {
             $read = $Stream.Read($buffer, 0, 1)
             if ($read -eq 0) {
-                throw [System.IO.EndOfStreamException]::new('Stream closed unexpectedly while reading SMTP line.')
+                throw [System.IO.EndOfStreamException]::new('Stream closed unexpectedly while reading IMAP line.')
             }
 
             $b = $buffer[0]
@@ -67,7 +67,7 @@ BeforeAll {
     $request.CertificateExtensions.Add($san.Build())
 
     $ephemeralCert = $request.CreateSelfSigned((Get-Date).AddDays(-1), (Get-Date).AddDays(10))
-    $pfxPassword = 'tlsleuth-starttls'
+    $pfxPassword = 'tlsleuth-imap-starttls'
     $pfxBytes = $ephemeralCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $pfxPassword)
     $script:serverCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
         $pfxBytes,
@@ -83,7 +83,7 @@ AfterAll {
     if ($script:rsa) { $script:rsa.Dispose() }
 }
 
-Describe 'Invoke-SmtpStartTlsNegotiation integration' {
+Describe 'Invoke-ImapStartTlsNegotiation integration' {
     It 'negotiates STARTTLS and allows certificate retrieval from the upgraded stream' {
         $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
         $listener.Start()
@@ -105,19 +105,18 @@ Describe 'Invoke-SmtpStartTlsNegotiation integration' {
             $serverClient = $acceptTask.Result
             $serverStream = $serverClient.GetStream()
 
-            Send-SmtpResponses -Stream $serverStream -Lines @(
-                '220 localhost ESMTP test',
-                '250-localhost',
-                '250-STARTTLS',
-                '250 PIPELINING',
-                '220 Ready to start TLS'
+            Send-ImapResponses -Stream $serverStream -Lines @(
+                '* OK IMAP4rev1 Service Ready',
+                '* CAPABILITY IMAP4rev1 STARTTLS AUTH=PLAIN',
+                'A001 OK CAPABILITY completed',
+                'A002 OK Begin TLS negotiation now'
             )
 
-            Invoke-SmtpStartTlsNegotiation -NetworkStream $clientConn.NetworkStream -EhloName 'localhost' -TimeoutMs 5000 | Should -Not -BeNullOrEmpty
+            Invoke-ImapStartTlsNegotiation -NetworkStream $clientConn.NetworkStream -TimeoutMs 5000 | Should -Not -BeNullOrEmpty
 
             $serverStream.ReadTimeout = 3000
-            (Read-SmtpLine -Stream $serverStream) | Should -Be 'EHLO localhost'
-            (Read-SmtpLine -Stream $serverStream) | Should -Be 'STARTTLS'
+            (Read-ImapLine -Stream $serverStream) | Should -Be 'A001 CAPABILITY'
+            (Read-ImapLine -Stream $serverStream) | Should -Be 'A002 STARTTLS'
 
             $serverSsl = [System.Net.Security.SslStream]::new($serverStream, $false)
             $serverHandshakeTask = $serverSsl.AuthenticateAsServerAsync(
@@ -148,7 +147,7 @@ Describe 'Invoke-SmtpStartTlsNegotiation integration' {
         }
     }
 
-    It 'throws when EHLO response does not advertise STARTTLS' {
+    It 'throws when CAPABILITY response does not advertise STARTTLS' {
         $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
         $listener.Start()
 
@@ -165,13 +164,13 @@ Describe 'Invoke-SmtpStartTlsNegotiation integration' {
             $serverClient = $acceptTask.Result
             $serverStream = $serverClient.GetStream()
 
-            Send-SmtpResponses -Stream $serverStream -Lines @(
-                '220 localhost ESMTP test',
-                '250-localhost',
-                '250 PIPELINING'
+            Send-ImapResponses -Stream $serverStream -Lines @(
+                '* OK IMAP4rev1 Service Ready',
+                '* CAPABILITY IMAP4rev1 AUTH=PLAIN',
+                'A001 OK CAPABILITY completed'
             )
 
-            { Invoke-SmtpStartTlsNegotiation -NetworkStream $clientConn.NetworkStream -EhloName 'localhost' -TimeoutMs 5000 } | Should -Throw '*STARTTLS*'
+            { Invoke-ImapStartTlsNegotiation -NetworkStream $clientConn.NetworkStream -TimeoutMs 5000 } | Should -Throw '*STARTTLS*'
         }
         finally {
             Close-NetworkResources -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
@@ -179,5 +178,4 @@ Describe 'Invoke-SmtpStartTlsNegotiation integration' {
             $listener.Stop()
         }
     }
-
 }

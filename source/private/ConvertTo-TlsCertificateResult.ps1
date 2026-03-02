@@ -34,7 +34,15 @@ function ConvertTo-TlsCertificateResult {
 
         [int]$CipherStrength,
 
-        [timespan]$Elapsed = [timespan]::Zero
+        [timespan]$Elapsed = [timespan]::Zero,
+
+        [bool]$CertificateValidationPassed = $true,
+
+        [System.Net.Security.SslPolicyErrors]$CertificatePolicyErrors = [System.Net.Security.SslPolicyErrors]::None,
+
+        [string[]]$CertificatePolicyErrorFlags = @(),
+
+        [string[]]$CertificateChainStatus = @()
     )
 
     $fn = $MyInvocation.MyCommand.Name
@@ -42,6 +50,9 @@ function ConvertTo-TlsCertificateResult {
     Write-Verbose "[$fn] Begin (Target=$Hostname :$Port, TargetHost=$TargetHost)"
 
     try {
+        $policyErrorFlags = if ($null -eq $CertificatePolicyErrorFlags) { ,([string[]]@()) } else { ,([string[]]$CertificatePolicyErrorFlags) }
+        $chainStatus = if ($null -eq $CertificateChainStatus) { ,([string[]]@()) } else { ,([string[]]$CertificateChainStatus) }
+
         $result = [PSCustomObject]@{
             PSTypeName         = 'TLSleuth.CertificateResult'
             Hostname           = $Hostname
@@ -55,6 +66,10 @@ function ConvertTo-TlsCertificateResult {
             NotAfter           = $Certificate.NotAfter
             IsValidNow         = $Validity.IsValidNow
             DaysUntilExpiry    = $Validity.DaysUntilExpiry
+            CertificateValidationPassed = $CertificateValidationPassed
+            CertificatePolicyErrors     = $CertificatePolicyErrors
+            CertificatePolicyErrorFlags = $policyErrorFlags
+            CertificateChainStatus      = $chainStatus
             NegotiatedProtocol = $NegotiatedProtocol
             CipherAlgorithm    = $CipherAlgorithm
             CipherStrength     = $CipherStrength

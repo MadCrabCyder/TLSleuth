@@ -43,6 +43,10 @@ Describe 'ConvertTo-TlsCertificateResult' {
         $result.Thumbprint | Should -Be $script:cert.Thumbprint
         $result.IsValidNow | Should -BeTrue
         $result.DaysUntilExpiry | Should -Be 10
+        $result.CertificateValidationPassed | Should -BeTrue
+        $result.CertificatePolicyErrors | Should -Be ([System.Net.Security.SslPolicyErrors]::None)
+        ($result.CertificatePolicyErrorFlags -is [array]) | Should -BeTrue
+        ($result.CertificateChainStatus -is [array]) | Should -BeTrue
         $result.ElapsedMs | Should -Be 123
         $result.Certificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
     }

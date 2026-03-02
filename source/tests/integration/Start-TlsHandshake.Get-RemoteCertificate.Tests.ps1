@@ -77,6 +77,8 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
             $remoteCertificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
             $remoteCertificate.Subject | Should -Match 'CN=localhost'
             $clientSslResult.NegotiatedProtocol | Should -Be ([System.Security.Authentication.SslProtocols]::Tls12)
+            $clientSslResult.CertificateValidationPassed | Should -BeFalse
+            $clientSslResult.CertificatePolicyErrorFlags | Should -Contain 'RemoteCertificateChainErrors'
 
             $remoteCertificate.Dispose()
         }
