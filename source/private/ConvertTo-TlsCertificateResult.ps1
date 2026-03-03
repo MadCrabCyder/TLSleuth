@@ -34,6 +34,26 @@ function ConvertTo-TlsCertificateResult {
 
         [int]$CipherStrength,
 
+        $NegotiatedCipherSuite,
+
+        $HashAlgorithm,
+
+        [int]$HashStrength,
+
+        $KeyExchangeAlgorithm,
+
+        [int]$KeyExchangeStrength,
+
+        [bool]$IsMutuallyAuthenticated = $false,
+
+        [bool]$IsEncrypted = $false,
+
+        [bool]$IsSigned = $false,
+
+        $NegotiatedApplicationProtocol,
+
+        [bool]$ForwardSecrecy = $false,
+
         [timespan]$Elapsed = [timespan]::Zero,
 
         [bool]$CertificateValidationPassed = $true,
@@ -73,6 +93,16 @@ function ConvertTo-TlsCertificateResult {
             NegotiatedProtocol = $NegotiatedProtocol
             CipherAlgorithm    = $CipherAlgorithm
             CipherStrength     = $CipherStrength
+            NegotiatedCipherSuite = $NegotiatedCipherSuite
+            HashAlgorithm         = $HashAlgorithm
+            HashStrength          = $HashStrength
+            KeyExchangeAlgorithm  = $KeyExchangeAlgorithm
+            KeyExchangeStrength   = $KeyExchangeStrength
+            IsMutuallyAuthenticated = $IsMutuallyAuthenticated
+            IsEncrypted             = $IsEncrypted
+            IsSigned                = $IsSigned
+            NegotiatedApplicationProtocol = $NegotiatedApplicationProtocol
+            ForwardSecrecy = $ForwardSecrecy
             ElapsedMs          = [int][Math]::Round($Elapsed.TotalMilliseconds)
             Certificate        = $Certificate
         }

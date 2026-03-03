@@ -56,8 +56,9 @@ For more information see this page: [Implicit vs Explicit TLS](https://tlsleuth.
   - [Features](#features)
   - [New Feature for Version 2 - Explicit Transport Support](#new-feature-for-version-2---explicit-transport-support)
   - [Limitations and When to Use a Dedicated TLS Scanner](#limitations-and-when-to-use-a-dedicated-tls-scanner)
-- [Installation](#installation)
-  - [From PowerShell Gallery](#from-powershell-gallery)
+  - [Installation and Updating](#installation-and-updating)
+    - [Install from PowerShell Gallery](#install-from-powershell-gallery)
+    - [Update from PowerShell Gallery](#update-from-powershell-gallery)
 - [Quick Start](#quick-start)
 - [Output Model](#output-model)
 - [Architecture Overview](#architecture-overview)
@@ -87,17 +88,23 @@ Because it relies on `.NET SslStream` and the underlying OS TLS stack (SChannel 
 For full TLS posture analysis, cipher enumeration, downgrade testing, and vulnerability scanning, use a [Dedicated TLS Scanner](https://tlsleuth.com/blog/dedicated-scanners.html)
 
 
-# Installation
+## Installation and Updating
 
-## From PowerShell Gallery
+### Install from PowerShell Gallery
 
 ``` powershell
 Install-Module TLSleuth -Scope CurrentUser
 Import-Module TLSleuth
 ```
 
-Recommended: **PowerShell 7+**
-Supported: Windows PowerShell 5.1 (reduced TLS/cipher detail)
+### Update from PowerShell Gallery
+
+``` powershell
+Update-Module TLSleuth
+```
+
+> Recommended: **PowerShell 7+**
+> Supported: Windows PowerShell 5.1 (reduced TLS/cipher detail)
 
 ------------------------------------------------------------------------
 
@@ -113,7 +120,7 @@ Get-TLSleuthCertificate -Hostname google.com -TlsProtocols Tls12
 # Pipeline usage
 'github.com','microsoft.com' |
   Get-TLSleuthCertificate |
-  Select Hostname, NegotiatedProtocol, CipherAlgorithm, CipherStrength, NotAfter
+  Select Hostname, NegotiatedProtocol, NegotiatedCipherSuite, CipherAlgorithm, CipherStrength, ForwardSecrecy, NotAfter
 
 # Verbose tracing
 Get-TLSleuthCertificate -Hostname microsoft.com -Verbose
@@ -160,6 +167,16 @@ CertificateChainStatus      : {}
 NegotiatedProtocol          : Tls13
 CipherAlgorithm             : Aes256
 CipherStrength              : 256
+NegotiatedCipherSuite       : TLS_AES_256_GCM_SHA384
+HashAlgorithm               : Sha384
+HashStrength                : 384
+KeyExchangeAlgorithm        : None
+KeyExchangeStrength         : 0
+IsMutuallyAuthenticated     : False
+IsEncrypted                 : True
+IsSigned                    : True
+NegotiatedApplicationProtocol : h2
+ForwardSecrecy              : True
 ElapsedMs                   : 50
 Certificate                 : X509Certificate2
 ```
@@ -168,10 +185,27 @@ The object includes:
 
 - Certificate metadata
 - Validity status
-- Negotiated TLS protocol
-- Cipher algorithm & strength
+- `NegotiatedProtocol`
+- `CipherAlgorithm`
+- `CipherStrength`
+- `NegotiatedCipherSuite`
+- `HashAlgorithm`
+- `HashStrength`
+- `KeyExchangeAlgorithm`
+- `KeyExchangeStrength`
+- `IsMutuallyAuthenticated`
+- `IsEncrypted`
+- `IsSigned`
+- `NegotiatedApplicationProtocol`
+- `ForwardSecrecy`
+- `CertificateValidationPassed`
+- `CertificatePolicyErrors`
+- `CertificatePolicyErrorFlags`
+- `CertificateChainStatus`
 - Timing information
 - Raw `X509Certificate2` for advanced use
+
+`NegotiatedCipherSuite` and `NegotiatedApplicationProtocol` depend on runtime/OS support and may be `$null` on Windows PowerShell 5.1.
 
 Designed for stable automation and predictable output contracts.
 
@@ -276,6 +310,10 @@ MIT --- see LICENSE
 ------------------------------------------------------------------------
 
 # Release Notes
+
+> ### 2.2.0 (03-Mar-2026)
+> * Refactored TLS handshake detail extraction into `Get-TlsHandshakeDetails`
+> * Added additional TLS/session fields to `Get-TLSleuthCertificate` output model
 
 > ### 2.1.0 (02-Mar-2026)
 > * Added `ImapStartTls` and `Pop3StartTls` transports

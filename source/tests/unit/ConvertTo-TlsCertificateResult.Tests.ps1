@@ -34,6 +34,16 @@ Describe 'ConvertTo-TlsCertificateResult' {
             -NegotiatedProtocol ([System.Security.Authentication.SslProtocols]::Tls12) `
             -CipherAlgorithm 'Aes256' `
             -CipherStrength 256 `
+            -NegotiatedCipherSuite 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384' `
+            -HashAlgorithm 'Sha256' `
+            -HashStrength 256 `
+            -KeyExchangeAlgorithm 'ECDHE' `
+            -KeyExchangeStrength 256 `
+            -IsMutuallyAuthenticated $false `
+            -IsEncrypted $true `
+            -IsSigned $true `
+            -NegotiatedApplicationProtocol 'h2' `
+            -ForwardSecrecy $true `
             -Elapsed ([timespan]::FromMilliseconds(123.4))
 
         $result.PSTypeNames | Should -Contain 'TLSleuth.CertificateResult'
@@ -47,6 +57,16 @@ Describe 'ConvertTo-TlsCertificateResult' {
         $result.CertificatePolicyErrors | Should -Be ([System.Net.Security.SslPolicyErrors]::None)
         ($result.CertificatePolicyErrorFlags -is [array]) | Should -BeTrue
         ($result.CertificateChainStatus -is [array]) | Should -BeTrue
+        $result.NegotiatedCipherSuite | Should -Be 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384'
+        $result.HashAlgorithm | Should -Be 'Sha256'
+        $result.HashStrength | Should -Be 256
+        $result.KeyExchangeAlgorithm | Should -Be 'ECDHE'
+        $result.KeyExchangeStrength | Should -Be 256
+        $result.IsMutuallyAuthenticated | Should -BeFalse
+        $result.IsEncrypted | Should -BeTrue
+        $result.IsSigned | Should -BeTrue
+        $result.NegotiatedApplicationProtocol | Should -Be 'h2'
+        $result.ForwardSecrecy | Should -BeTrue
         $result.ElapsedMs | Should -Be 123
         $result.Certificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
     }

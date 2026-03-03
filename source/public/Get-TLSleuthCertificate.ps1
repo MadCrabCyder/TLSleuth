@@ -56,7 +56,8 @@ function Get-TLSleuthCertificate {
         $target = if ([string]::IsNullOrWhiteSpace($TargetHost)) { $Hostname } else { $TargetHost }
 
         $tcpConnection = $null
-        $tlsSession = $null
+        $sslStream = $null
+        $tlsDetails = $null
         $certificate = $null
 
         try {
@@ -89,14 +90,15 @@ function Get-TLSleuthCertificate {
                     -TimeoutMs $timeoutMs | Out-Null
             }
 
-            $tlsSession = Start-TlsHandshake `
+            $sslStream = Start-TlsHandshake `
                 -NetworkStream $tcpConnection.NetworkStream `
                 -TargetHost $target `
                 -SslProtocols $sslProtocols `
                 -TimeoutMs $timeoutMs `
                 -SkipCertificateValidation:$SkipCertificateValidation
 
-            $certificate = Get-RemoteCertificate -SslStream $tlsSession.SslStream
+            $tlsDetails = Get-TlsHandshakeDetails -SslStream $sslStream
+            $certificate = Get-RemoteCertificate -SslStream $sslStream
 
             $validity = Test-TlsCertificateValidity -Certificate $certificate
 
@@ -106,18 +108,28 @@ function Get-TLSleuthCertificate {
                 -TargetHost $target `
                 -Certificate $certificate `
                 -Validity $validity `
-                -CertificateValidationPassed $tlsSession.CertificateValidationPassed `
-                -CertificatePolicyErrors $tlsSession.CertificatePolicyErrors `
-                -CertificatePolicyErrorFlags $tlsSession.CertificatePolicyErrorFlags `
-                -CertificateChainStatus $tlsSession.CertificateChainStatus `
-                -NegotiatedProtocol $tlsSession.NegotiatedProtocol `
-                -CipherAlgorithm $tlsSession.CipherAlgorithm `
-                -CipherStrength $tlsSession.CipherStrength `
+                -CertificateValidationPassed $tlsDetails.CertificateValidationPassed `
+                -CertificatePolicyErrors $tlsDetails.CertificatePolicyErrors `
+                -CertificatePolicyErrorFlags $tlsDetails.CertificatePolicyErrorFlags `
+                -CertificateChainStatus $tlsDetails.CertificateChainStatus `
+                -NegotiatedProtocol $tlsDetails.NegotiatedProtocol `
+                -CipherAlgorithm $tlsDetails.CipherAlgorithm `
+                -CipherStrength $tlsDetails.CipherStrength `
+                -NegotiatedCipherSuite $tlsDetails.NegotiatedCipherSuite `
+                -HashAlgorithm $tlsDetails.HashAlgorithm `
+                -HashStrength $tlsDetails.HashStrength `
+                -KeyExchangeAlgorithm $tlsDetails.KeyExchangeAlgorithm `
+                -KeyExchangeStrength $tlsDetails.KeyExchangeStrength `
+                -IsMutuallyAuthenticated $tlsDetails.IsMutuallyAuthenticated `
+                -IsEncrypted $tlsDetails.IsEncrypted `
+                -IsSigned $tlsDetails.IsSigned `
+                -NegotiatedApplicationProtocol $tlsDetails.NegotiatedApplicationProtocol `
+                -ForwardSecrecy $tlsDetails.ForwardSecrecy `
                 -Elapsed $itemSw.Elapsed
         }
         finally {
             $itemSw.Stop()
-            Close-NetworkResources -SslStream $tlsSession.SslStream -NetworkStream $tcpConnection.NetworkStream -TcpClient $tcpConnection.TcpClient
+            Close-NetworkResources -SslStream $sslStream -NetworkStream $tcpConnection.NetworkStream -TcpClient $tcpConnection.TcpClient
         }
 
     }

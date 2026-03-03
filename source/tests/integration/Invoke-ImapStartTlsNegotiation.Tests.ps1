@@ -8,6 +8,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-WithStreamTimeout.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsHandshakeDetails.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-RemoteCertificate.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Close-NetworkResources.ps1')
 
@@ -93,7 +94,7 @@ Describe 'Invoke-ImapStartTlsNegotiation integration' {
         $serverSsl = $null
         $serverHandshakeTask = $null
         $clientConn = $null
-        $clientSslResult = $null
+        $clientSslStream = $null
         $remoteCertificate = $null
 
         try {
@@ -126,7 +127,7 @@ Describe 'Invoke-ImapStartTlsNegotiation integration' {
                 $false
             )
 
-            $clientSslResult = Start-TlsHandshake `
+            $clientSslStream = Start-TlsHandshake `
                 -NetworkStream $clientConn.NetworkStream `
                 -TargetHost 'localhost' `
                 -SslProtocols ([System.Security.Authentication.SslProtocols]::Tls12) `
@@ -135,13 +136,13 @@ Describe 'Invoke-ImapStartTlsNegotiation integration' {
 
             $serverHandshakeTask.Wait(5000) | Should -BeTrue
 
-            $remoteCertificate = Get-RemoteCertificate -SslStream $clientSslResult.SslStream
+            $remoteCertificate = Get-RemoteCertificate -SslStream $clientSslStream
             $remoteCertificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
             $remoteCertificate.Subject | Should -Match 'CN=localhost'
         }
         finally {
             if ($remoteCertificate) { $remoteCertificate.Dispose() }
-            Close-NetworkResources -SslStream $clientSslResult.SslStream -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
+            Close-NetworkResources -SslStream $clientSslStream -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
             Close-NetworkResources -SslStream $serverSsl -NetworkStream $serverStream -TcpClient $serverClient
             $listener.Stop()
         }

@@ -4,6 +4,7 @@ BeforeAll {
 
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsHandshakeDetails.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-RemoteCertificate.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Close-NetworkResources.ps1')
 
@@ -45,7 +46,8 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
         $serverStream = $null
         $serverSsl = $null
         $clientConn = $null
-        $clientSslResult = $null
+        $clientSslStream = $null
+        $tlsDetails = $null
 
         try {
             $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
@@ -64,7 +66,7 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
                 $false
             )
 
-            $clientSslResult = Start-TlsHandshake `
+            $clientSslStream = Start-TlsHandshake `
                 -NetworkStream $clientConn.NetworkStream `
                 -TargetHost 'localhost' `
                 -SslProtocols ([System.Security.Authentication.SslProtocols]::Tls12) `
@@ -72,18 +74,23 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
                 -SkipCertificateValidation
 
             $serverHandshakeTask.Wait(5000) | Should -BeTrue
-            $remoteCertificate = Get-RemoteCertificate -SslStream $clientSslResult.SslStream
+            $tlsDetails = Get-TlsHandshakeDetails -SslStream $clientSslStream
+            $remoteCertificate = Get-RemoteCertificate -SslStream $clientSslStream
 
             $remoteCertificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
             $remoteCertificate.Subject | Should -Match 'CN=localhost'
-            $clientSslResult.NegotiatedProtocol | Should -Be ([System.Security.Authentication.SslProtocols]::Tls12)
-            $clientSslResult.CertificateValidationPassed | Should -BeFalse
-            $clientSslResult.CertificatePolicyErrorFlags | Should -Contain 'RemoteCertificateChainErrors'
+            $tlsDetails.NegotiatedProtocol | Should -Be ([System.Security.Authentication.SslProtocols]::Tls12)
+            $tlsDetails.CertificateValidationPassed | Should -BeFalse
+            $tlsDetails.CertificatePolicyErrorFlags | Should -Contain 'RemoteCertificateChainErrors'
+            $tlsDetails.PSObject.Properties.Name | Should -Contain 'NegotiatedCipherSuite'
+            $tlsDetails.PSObject.Properties.Name | Should -Contain 'HashAlgorithm'
+            $tlsDetails.PSObject.Properties.Name | Should -Contain 'NegotiatedApplicationProtocol'
+            ($tlsDetails.ForwardSecrecy -is [bool]) | Should -BeTrue
 
             $remoteCertificate.Dispose()
         }
         finally {
-            Close-NetworkResources -SslStream $clientSslResult.SslStream -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
+            Close-NetworkResources -SslStream $clientSslStream -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
             Close-NetworkResources -SslStream $serverSsl -NetworkStream $serverStream -TcpClient $serverClient
             $listener.Stop()
         }

@@ -11,6 +11,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsHandshakeDetails.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-RemoteCertificate.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Test-TlsCertificateValidity.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsCertificateResult.ps1')
@@ -55,11 +56,24 @@ Describe 'Get-TLSleuthCertificate transport selection' {
         }
 
         Mock Start-TlsHandshake {
+            [System.Net.Security.SslStream]::new([System.IO.MemoryStream]::new())
+        }
+
+        Mock Get-TlsHandshakeDetails {
             [PSCustomObject]@{
-                SslStream = [System.Net.Security.SslStream]::new([System.IO.MemoryStream]::new())
                 NegotiatedProtocol = [System.Security.Authentication.SslProtocols]::Tls12
                 CipherAlgorithm = 'Aes256'
                 CipherStrength = 256
+                NegotiatedCipherSuite = 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384'
+                HashAlgorithm = 'Sha256'
+                HashStrength = 256
+                KeyExchangeAlgorithm = 'ECDHE'
+                KeyExchangeStrength = 256
+                IsMutuallyAuthenticated = $false
+                IsEncrypted = $true
+                IsSigned = $true
+                NegotiatedApplicationProtocol = 'h2'
+                ForwardSecrecy = $true
                 CertificateValidationPassed = $true
                 CertificatePolicyErrors = [System.Net.Security.SslPolicyErrors]::None
                 CertificatePolicyErrorFlags = @()

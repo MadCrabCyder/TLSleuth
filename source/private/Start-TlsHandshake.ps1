@@ -4,12 +4,10 @@ function Start-TlsHandshake {
     Starts a TLS handshake on an existing network stream.
 
 .OUTPUTS
-    PSCustomObject {
-        SslStream, NegotiatedProtocol, CipherAlgorithm, CipherStrength,
-        CertificateValidationPassed, CertificatePolicyErrors, CertificatePolicyErrorFlags, CertificateChainStatus
-    }
+    System.Net.Security.SslStream
 #>
     [CmdletBinding()]
+    [OutputType([System.Net.Security.SslStream])]
     param(
         [Parameter(Mandatory)]
         [ValidateNotNull()]
@@ -32,14 +30,14 @@ function Start-TlsHandshake {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "[$fn] Begin (Target=$TargetHost, Protocols=$SslProtocols, TimeoutMs=$TimeoutMs, SkipValidation=$SkipCertificateValidation)"
     $ssl = $null
+    $handshakeSucceeded = $false
 
     if (-not ('TLSleuth.CertificateValidationCallbacksV2' -as [type])) {
         Add-Type -TypeDefinition @"
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Net.Security;
 using System.Runtime.CompilerServices;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 
 namespace TLSleuth
@@ -50,39 +48,50 @@ namespace TLSleuth
         public string[] ChainStatus { get; set; } = new string[0];
     }
 
+    internal sealed class CertificateValidationOptionsV2
+    {
+        public bool SkipValidation { get; set; }
+    }
+
     public static class CertificateValidationCallbacksV2
     {
-        private static readonly ConcurrentDictionary<int, bool> SkipValidationBySender = new ConcurrentDictionary<int, bool>();
-        private static readonly ConcurrentDictionary<int, CertificateValidationStateV2> StateBySender = new ConcurrentDictionary<int, CertificateValidationStateV2>();
-
-        private static int GetSenderId(object sender)
-        {
-            return sender == null ? 0 : RuntimeHelpers.GetHashCode(sender);
-        }
+        private static readonly ConditionalWeakTable<object, CertificateValidationOptionsV2> OptionsBySender =
+            new ConditionalWeakTable<object, CertificateValidationOptionsV2>();
+        private static readonly ConditionalWeakTable<object, CertificateValidationStateV2> StateBySender =
+            new ConditionalWeakTable<object, CertificateValidationStateV2>();
 
         public static void Register(object sender, bool skipValidation)
         {
-            var id = GetSenderId(sender);
-            SkipValidationBySender[id] = skipValidation;
-            CertificateValidationStateV2 removed;
-            StateBySender.TryRemove(id, out removed);
+            if (sender == null)
+            {
+                return;
+            }
+
+            OptionsBySender.Remove(sender);
+            StateBySender.Remove(sender);
+            OptionsBySender.Add(sender, new CertificateValidationOptionsV2 { SkipValidation = skipValidation });
         }
 
         public static CertificateValidationStateV2 GetState(object sender)
         {
-            var id = GetSenderId(sender);
+            if (sender == null)
+            {
+                return null;
+            }
+
             CertificateValidationStateV2 state;
-            StateBySender.TryGetValue(id, out state);
-            return state;
+            return StateBySender.TryGetValue(sender, out state) ? state : null;
         }
 
         public static void Cleanup(object sender)
         {
-            var id = GetSenderId(sender);
-            bool removedSkip;
-            SkipValidationBySender.TryRemove(id, out removedSkip);
-            CertificateValidationStateV2 removedState;
-            StateBySender.TryRemove(id, out removedState);
+            if (sender == null)
+            {
+                return;
+            }
+
+            OptionsBySender.Remove(sender);
+            StateBySender.Remove(sender);
         }
 
         public static bool CaptureAndValidate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
@@ -99,20 +108,24 @@ namespace TLSleuth
                 }
             }
 
-            var id = GetSenderId(sender);
-            StateBySender[id] = new CertificateValidationStateV2
+            if (sender != null)
             {
-                PolicyErrors = sslPolicyErrors,
-                ChainStatus = chainStatuses.ToArray()
-            };
+                StateBySender.Remove(sender);
+                StateBySender.Add(sender, new CertificateValidationStateV2
+                {
+                    PolicyErrors = sslPolicyErrors,
+                    ChainStatus = chainStatuses.ToArray()
+                });
 
-            bool skipValidation;
-            if (!SkipValidationBySender.TryGetValue(id, out skipValidation))
-            {
-                skipValidation = false;
+                CertificateValidationOptionsV2 options;
+                var skipValidation = OptionsBySender.TryGetValue(sender, out options) &&
+                                     options != null &&
+                                     options.SkipValidation;
+
+                return skipValidation || sslPolicyErrors == SslPolicyErrors.None;
             }
 
-            return skipValidation || sslPolicyErrors == SslPolicyErrors.None;
+            return sslPolicyErrors == SslPolicyErrors.None;
         }
     }
 }
@@ -134,42 +147,19 @@ namespace TLSleuth
             throw [System.TimeoutException]::new("TLS handshake timeout after ${TimeoutMs}ms for $TargetHost")
         }
 
-        $validationState = [TLSleuth.CertificateValidationCallbacksV2]::GetState($ssl)
-        $policyErrors = [System.Net.Security.SslPolicyErrors]::None
-        $chainStatus = [string[]]@()
-        if ($validationState) {
-            $policyErrors = $validationState.PolicyErrors
-            $chainStatus = [string[]]$validationState.ChainStatus
-        }
-
-        $policyErrorFlags = [System.Collections.Generic.List[string]]::new()
-        if (($policyErrors -band [System.Net.Security.SslPolicyErrors]::RemoteCertificateNotAvailable) -ne 0) {
-            $policyErrorFlags.Add('RemoteCertificateNotAvailable')
-        }
-        if (($policyErrors -band [System.Net.Security.SslPolicyErrors]::RemoteCertificateNameMismatch) -ne 0) {
-            $policyErrorFlags.Add('RemoteCertificateNameMismatch')
-        }
-        if (($policyErrors -band [System.Net.Security.SslPolicyErrors]::RemoteCertificateChainErrors) -ne 0) {
-            $policyErrorFlags.Add('RemoteCertificateChainErrors')
-        }
-
-        $validationPassed = ($policyErrors -eq [System.Net.Security.SslPolicyErrors]::None)
-
-        Write-Verbose "[$fn] Handshake succeeded (Protocol=$($ssl.SslProtocol), Cipher=$($ssl.CipherAlgorithm), Strength=$($ssl.CipherStrength), ValidationPassed=$validationPassed, PolicyErrors=$policyErrors)."
-        [PSCustomObject]@{
-            SslStream                    = $ssl
-            NegotiatedProtocol           = $ssl.SslProtocol
-            CipherAlgorithm              = $ssl.CipherAlgorithm
-            CipherStrength               = $ssl.CipherStrength
-            CertificateValidationPassed  = $validationPassed
-            CertificatePolicyErrors      = $policyErrors
-            CertificatePolicyErrorFlags  = [string[]]$policyErrorFlags
-            CertificateChainStatus       = [string[]]$chainStatus
-        }
+        Write-Verbose "[$fn] Handshake succeeded (Protocol=$($ssl.SslProtocol), Cipher=$($ssl.CipherAlgorithm), Strength=$($ssl.CipherStrength))."
+        $handshakeSucceeded = $true
+        $ssl
     }
     catch {
         Write-Debug "[$fn] Handshake failed for ${TargetHost}: $($_.Exception.GetType().FullName)"
-        try { if ($ssl) { $ssl.Dispose() } } catch {}
+        try {
+            if ($ssl) {
+                [TLSleuth.CertificateValidationCallbacksV2]::Cleanup($ssl)
+                $ssl.Dispose()
+            }
+        }
+        catch {}
 
         $errorToThrow = $_.Exception
         if ($errorToThrow -is [System.AggregateException] -and $errorToThrow.InnerException) {
@@ -179,7 +169,7 @@ namespace TLSleuth
     }
     finally {
         try {
-            if ($ssl) {
+            if (-not $handshakeSucceeded -and $ssl) {
                 [TLSleuth.CertificateValidationCallbacksV2]::Cleanup($ssl)
             }
         }
