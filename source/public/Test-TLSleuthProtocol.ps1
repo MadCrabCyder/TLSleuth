@@ -73,30 +73,15 @@ function Test-TLSleuthProtocol {
                     $connection | Add-Member -NotePropertyName 'SslStream' -NotePropertyValue $null
                 }
 
-                if ($Transport -eq 'SmtpStartTls') {
-                    $ehloName = $SmtpEhloName
-                    if ([string]::IsNullOrWhiteSpace($ehloName)) {
-                        $ehloName = [System.Net.Dns]::GetHostName()
-                        if ([string]::IsNullOrWhiteSpace($ehloName)) {
-                            $ehloName = 'localhost'
-                        }
-                    }
+                $transportOptions = [PSCustomObject]@{
+                    TimeoutMs    = $timeoutMs
+                    SmtpEhloName = $SmtpEhloName
+                }
 
-                    Invoke-SmtpStartTlsNegotiation `
-                        -NetworkStream $connection.NetworkStream `
-                        -EhloName $ehloName `
-                        -TimeoutMs $timeoutMs | Out-Null
-                }
-                elseif ($Transport -eq 'ImapStartTls') {
-                    Invoke-ImapStartTlsNegotiation `
-                        -NetworkStream $connection.NetworkStream `
-                        -TimeoutMs $timeoutMs | Out-Null
-                }
-                elseif ($Transport -eq 'Pop3StartTls') {
-                    Invoke-Pop3StartTlsNegotiation `
-                        -NetworkStream $connection.NetworkStream `
-                        -TimeoutMs $timeoutMs | Out-Null
-                }
+                Invoke-TlsTransportNegotiation `
+                    -Transport $Transport `
+                    -Connection $connection `
+                    -Options $transportOptions
 
                 $handshakeStream = Start-TlsHandshake `
                     -Connection $connection `

@@ -384,6 +384,12 @@ MIT --- see LICENSE
 
 # Release Notes
 
+> ### 2.3.2 (08-Mar-2026)
+> * Added `Invoke-TlsTransportNegotiation` to centralize transport negotiation dispatch for `ImplicitTls`, `SmtpStartTls`, `ImapStartTls`, and `Pop3StartTls`
+> * Simplified `Get-TLSleuthCertificate` and `Test-TLSleuthProtocol` orchestration to: connect -> transport negotiation -> TLS handshake -> result processing
+> * Removed protocol-specific STARTTLS branching from public command implementations; negotiation is now fully delegated to private transport negotiation helper(s)
+> * Preserved public parameters, output contracts, timeout behavior, and existing STARTTLS integration behavior
+
 > ### 2.3.1 (08-Mar-2026)
 > * Refactored internal TLS helpers to use a shared connection context object (`TcpClient`, `NetworkStream`, `SslStream`) instead of passing resources separately
 > * Updated `Start-TlsHandshake` to create the TLS stream from `Connection.NetworkStream` and populate `Connection.SslStream`
