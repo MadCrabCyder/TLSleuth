@@ -61,6 +61,7 @@ For more information see this page: [Implicit vs Explicit TLS](https://tlsleuth.
     - [Update from PowerShell Gallery](#update-from-powershell-gallery)
 - [Quick Start](#quick-start)
 - [Output Model](#output-model)
+  - [Get-TLSleuthCertificate returns a structured object:](#get-tlsleuthcertificate-returns-a-structured-object)
 - [Architecture Overview](#architecture-overview)
   - [Project Layout](#project-layout)
 - [Building from Source](#building-from-source)
@@ -134,6 +135,20 @@ Get-TLSleuthCertificate -Hostname outlook.office365.com -Port 143 -Transport Ima
 # New in V2.1.0 - Retrieve certificate from POP3 server
 Get-TLSleuthCertificate -Hostname pop.gmail.com -Port 110 -Transport Pop3StartTls
 
+# New in V2.3.0 - Test protocol support on an HTTPS endpoint
+Test-TLSleuthProtocol -Hostname github.com |
+  Select Protocol, ConnectionSuccessful, NegotiatedProtocol, NegotiatedCipherSuite, ErrorMessage
+
+# New in V2.3.0 - Test protocol support for SMTP STARTTLS
+Test-TLSleuthProtocol -Hostname smtp.gmail.com -Port 587 -Transport SmtpStartTls |
+  Select Protocol, ConnectionSuccessful, NegotiatedProtocol, ErrorMessage
+
+# New in V2.3.0 - Pipeline protocol testing across multiple hosts
+'github.com','microsoft.com' |
+  Test-TLSleuthProtocol |
+  Where-Object ConnectionSuccessful |
+  Select Hostname, Protocol, NegotiatedProtocol, NegotiatedCipherSuite
+
 # Retrieve an invalid certificate but keep validation diagnostics
 Get-TLSleuthCertificate -Hostname wrong.host.badssl.com -SkipCertificateValidation |
   Select Hostname, CertificateValidationPassed, CertificatePolicyErrors, CertificatePolicyErrorFlags
@@ -145,21 +160,23 @@ Get-TLSleuthCertificate -Hostname wrong.host.badssl.com -SkipCertificateValidati
 
 # Output Model
 
-TLSleuth returns a structured object:
+## Get-TLSleuthCertificate
 
 Example:
 
 ``` powershell
-Hostname                    : microsoft.com
+PSTypeName                  : TLSleuth.CertificateResult
+Hostname                    : github.com
 Port                        : 443
-TargetHost                  : microsoft.com
-Subject                     : CN=microsoft.com, O=Microsoft Corporation...
-Issuer                      : CN=Microsoft Azure RSA TLS Issuing CA 04...
-Thumbprint                  : 40B3005534C15CC035B1F0061A813B8F91D1A02A
-NotBefore                   : 4/02/2026 11:21:49 AM
-NotAfter                    : 3/08/2026 10:21:49 AM
+TargetHost                  : github.com
+Subject                     : CN=github.com
+Issuer                      : CN=Sectigo ECC Domain Validation Secure Server CA, O=Sectigo Limited, C=GB
+Thumbprint                  : 0123456789ABCDEF0123456789ABCDEF01234567
+SerialNumber                : 0ABC1234DEF56789ABC1234DEF56789A
+NotBefore                   : 02/01/2026 12:00:00 AM
+NotAfter                    : 01/04/2026 11:59:59 PM
 IsValidNow                  : True
-DaysUntilExpiry             : 155
+DaysUntilExpiry             : 25
 CertificateValidationPassed : True
 CertificatePolicyErrors     : None
 CertificatePolicyErrorFlags : {}
@@ -177,37 +194,93 @@ IsEncrypted                 : True
 IsSigned                    : True
 NegotiatedApplicationProtocol : h2
 ForwardSecrecy              : True
-ElapsedMs                   : 50
+ElapsedMs                   : 48
 Certificate                 : X509Certificate2
 ```
 
-The object includes:
+Properties include:
 
-- Certificate metadata
-- Validity status
-- `NegotiatedProtocol`
-- `CipherAlgorithm`
-- `CipherStrength`
-- `NegotiatedCipherSuite`
-- `HashAlgorithm`
-- `HashStrength`
-- `KeyExchangeAlgorithm`
-- `KeyExchangeStrength`
-- `IsMutuallyAuthenticated`
-- `IsEncrypted`
-- `IsSigned`
-- `NegotiatedApplicationProtocol`
-- `ForwardSecrecy`
-- `CertificateValidationPassed`
-- `CertificatePolicyErrors`
-- `CertificatePolicyErrorFlags`
-- `CertificateChainStatus`
-- Timing information
-- Raw `X509Certificate2` for advanced use
+- `PSTypeName` (`TLSleuth.CertificateResult`)
+- Endpoint identity: `Hostname`, `Port`, `TargetHost`
+- Certificate identity: `Subject`, `Issuer`, `Thumbprint`, `SerialNumber`
+- Certificate validity: `NotBefore`, `NotAfter`, `IsValidNow`, `DaysUntilExpiry`
+- Validation details: `CertificateValidationPassed`, `CertificatePolicyErrors`, `CertificatePolicyErrorFlags`, `CertificateChainStatus`
+- TLS/session details: `NegotiatedProtocol`, `CipherAlgorithm`, `CipherStrength`, `NegotiatedCipherSuite`, `HashAlgorithm`, `HashStrength`, `KeyExchangeAlgorithm`, `KeyExchangeStrength`, `IsMutuallyAuthenticated`, `IsEncrypted`, `IsSigned`, `NegotiatedApplicationProtocol`, `ForwardSecrecy`
+- Timing and raw certificate: `ElapsedMs`, `Certificate`
 
 `NegotiatedCipherSuite` and `NegotiatedApplicationProtocol` depend on runtime/OS support and may be `$null` on Windows PowerShell 5.1.
 
-Designed for stable automation and predictable output contracts.
+## Test-TLSleuthProtocol
+
+`Test-TLSleuthProtocol` returns one `TLSleuth.ProtocolTestResult` object per protocol attempt.
+
+Example output (one successful protocol attempt and one failed attempt):
+
+``` powershell
+PSTypeName                    : TLSleuth.ProtocolTestResult
+Hostname                      : github.com
+Port                          : 443
+TargetHost                    : github.com
+Transport                     : ImplicitTls
+Protocol                      : Tls12
+ConnectionSuccessful          : True
+ErrorMessage                  :
+NegotiatedProtocol            : Tls12
+CipherAlgorithm               : Aes256
+CipherStrength                : 256
+NegotiatedCipherSuite         : TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+HashAlgorithm                 : Sha256
+HashStrength                  : 256
+KeyExchangeAlgorithm          : ECDHE
+KeyExchangeStrength           : 256
+IsMutuallyAuthenticated       : False
+IsEncrypted                   : True
+IsSigned                      : True
+NegotiatedApplicationProtocol : h2
+ForwardSecrecy                : True
+CertificateValidationPassed   : True
+CertificatePolicyErrors       : None
+CertificatePolicyErrorFlags   : {}
+CertificateChainStatus        : {}
+ElapsedMs                     : 42
+
+PSTypeName                    : TLSleuth.ProtocolTestResult
+Hostname                      : github.com
+Port                          : 443
+TargetHost                    : github.com
+Transport                     : ImplicitTls
+Protocol                      : Tls11
+ConnectionSuccessful          : False
+ErrorMessage                  : Authentication failed because the remote party has closed the transport stream.
+NegotiatedProtocol            :
+CipherAlgorithm               :
+CipherStrength                :
+NegotiatedCipherSuite         :
+HashAlgorithm                 :
+HashStrength                  :
+KeyExchangeAlgorithm          :
+KeyExchangeStrength           :
+IsMutuallyAuthenticated       :
+IsEncrypted                   :
+IsSigned                      :
+NegotiatedApplicationProtocol :
+ForwardSecrecy                :
+CertificateValidationPassed   :
+CertificatePolicyErrors       :
+CertificatePolicyErrorFlags   : {}
+CertificateChainStatus        : {}
+ElapsedMs                     : 36
+```
+
+Properties include:
+
+- `PSTypeName` (`TLSleuth.ProtocolTestResult`)
+- Endpoint/protocol context: `Hostname`, `Port`, `TargetHost`, `Transport`, `Protocol`
+- Outcome: `ConnectionSuccessful`, `ErrorMessage`, `ElapsedMs`
+- Negotiated TLS/session details when successful: `NegotiatedProtocol`, `CipherAlgorithm`, `CipherStrength`, `NegotiatedCipherSuite`, `HashAlgorithm`, `HashStrength`, `KeyExchangeAlgorithm`, `KeyExchangeStrength`, `IsMutuallyAuthenticated`, `IsEncrypted`, `IsSigned`, `NegotiatedApplicationProtocol`, `ForwardSecrecy`
+- Certificate validation details when successful: `CertificateValidationPassed`, `CertificatePolicyErrors`, `CertificatePolicyErrorFlags`, `CertificateChainStatus`
+
+Designed for stable automation and predictable output contracts across both commands.
 
 ------------------------------------------------------------------------
 
@@ -310,6 +383,11 @@ MIT --- see LICENSE
 ------------------------------------------------------------------------
 
 # Release Notes
+
+> ### 2.3.0 (07-Mar-2026)
+> * Introduced `Test-TLSleuthProtocol` to test endpoint protocol support across runtime-available TLS protocol versions
+> * Added structured `TLSleuth.ProtocolTestResult` output per protocol attempt, including negotiated TLS details and per-attempt errors
+> * Added unit tests for protocol iteration, failure continuation, and STARTTLS negotiation behavior
 
 > ### 2.2.0 (03-Mar-2026)
 > * Refactored TLS handshake detail extraction into `Get-TlsHandshakeDetails`
