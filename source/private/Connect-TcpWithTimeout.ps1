@@ -23,7 +23,7 @@ function Connect-TcpWithTimeout {
 
     $fn = $MyInvocation.MyCommand.Name
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Write-Verbose "[$fn] Begin (Target=$Hostname :$Port, TimeoutMs=$TimeoutMs)"
+    Write-Verbose "[$fn] Begin (Target=$($Hostname):$($Port), TimeoutMs=$TimeoutMs)"
 
     $tcp = $null
     try {
@@ -32,11 +32,11 @@ function Connect-TcpWithTimeout {
 
         $task = $tcp.ConnectAsync($Hostname, $Port)
         if (-not $task.Wait($TimeoutMs)) {
-            throw [System.TimeoutException]::new("Connection timeout after ${TimeoutMs}ms to $Hostname :$Port")
+            throw [System.TimeoutException]::new("Connection timeout after ${TimeoutMs}ms to $($Hostname):$($Port)")
         }
 
         $netStream = $tcp.GetStream()
-        Write-Verbose "[$fn] Connected to $Hostname :$Port"
+        Write-Verbose "[$fn] Connected to $($Hostname):$($Port)"
         [PSCustomObject]@{ TcpClient = $tcp; NetworkStream = $netStream }
     }
     catch {

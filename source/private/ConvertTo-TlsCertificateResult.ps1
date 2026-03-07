@@ -67,7 +67,7 @@ function ConvertTo-TlsCertificateResult {
 
     $fn = $MyInvocation.MyCommand.Name
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Write-Verbose "[$fn] Begin (Target=$Hostname :$Port, TargetHost=$TargetHost)"
+    Write-Verbose "[$fn] Begin (Target=$($Hostname):$($Port), TargetHost=$TargetHost)"
 
     try {
         $policyErrorFlags = if ($null -eq $CertificatePolicyErrorFlags) { ,([string[]]@()) } else { ,([string[]]$CertificatePolicyErrorFlags) }
