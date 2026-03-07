@@ -60,15 +60,17 @@ function Test-TLSleuthProtocol {
 
         foreach ($protocol in $availableProtocols) {
             $itemSw = [System.Diagnostics.Stopwatch]::StartNew()
-            $tcpConnection = $null
-            $sslStream = $null
+            $connection = $null
             $tlsDetails = $null
             $connectionSuccessful = $false
             $errorMessage = $null
 
             try {
-                $tcpConnection = Invoke-WithRetry -ScriptBlock {
+                $connection = Invoke-WithRetry -ScriptBlock {
                     Connect-TcpWithTimeout -Hostname $Hostname -Port $Port -TimeoutMs $timeoutMs
+                }
+                if (-not $connection.PSObject.Properties['SslStream']) {
+                    $connection | Add-Member -NotePropertyName 'SslStream' -NotePropertyValue $null
                 }
 
                 if ($Transport -eq 'SmtpStartTls') {
@@ -81,29 +83,30 @@ function Test-TLSleuthProtocol {
                     }
 
                     Invoke-SmtpStartTlsNegotiation `
-                        -NetworkStream $tcpConnection.NetworkStream `
+                        -NetworkStream $connection.NetworkStream `
                         -EhloName $ehloName `
                         -TimeoutMs $timeoutMs | Out-Null
                 }
                 elseif ($Transport -eq 'ImapStartTls') {
                     Invoke-ImapStartTlsNegotiation `
-                        -NetworkStream $tcpConnection.NetworkStream `
+                        -NetworkStream $connection.NetworkStream `
                         -TimeoutMs $timeoutMs | Out-Null
                 }
                 elseif ($Transport -eq 'Pop3StartTls') {
                     Invoke-Pop3StartTlsNegotiation `
-                        -NetworkStream $tcpConnection.NetworkStream `
+                        -NetworkStream $connection.NetworkStream `
                         -TimeoutMs $timeoutMs | Out-Null
                 }
 
-                $sslStream = Start-TlsHandshake `
-                    -NetworkStream $tcpConnection.NetworkStream `
+                $handshakeStream = Start-TlsHandshake `
+                    -Connection $connection `
                     -TargetHost $target `
                     -SslProtocols $protocol `
                     -TimeoutMs $timeoutMs `
                     -SkipCertificateValidation:$SkipCertificateValidation
+                $connection.SslStream = $handshakeStream
 
-                $tlsDetails = Get-TlsHandshakeDetails -SslStream $sslStream
+                $tlsDetails = Get-TlsHandshakeDetails -Connection $connection
                 $connectionSuccessful = $true
             }
             catch {
@@ -112,7 +115,7 @@ function Test-TLSleuthProtocol {
             }
             finally {
                 $itemSw.Stop()
-                Close-NetworkResources -SslStream $sslStream -NetworkStream $tcpConnection.NetworkStream -TcpClient $tcpConnection.TcpClient
+                Close-NetworkResources -Connection $connection
             }
 
             [PSCustomObject]@{

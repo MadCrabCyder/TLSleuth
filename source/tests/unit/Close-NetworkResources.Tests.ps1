@@ -11,13 +11,23 @@ Describe 'Close-NetworkResources' {
 
     It 'disposes a memory stream safely' {
         $stream = [System.IO.MemoryStream]::new()
-        Close-NetworkResources -NetworkStream $stream
+        $connection = [PSCustomObject]@{
+            SslStream = $null
+            NetworkStream = $stream
+            TcpClient = $null
+        }
+        Close-NetworkResources -Connection $connection
         $stream.CanRead | Should -BeFalse
     }
 
     It 'is idempotent for already disposed resources' {
         $stream = [System.IO.MemoryStream]::new()
-        Close-NetworkResources -NetworkStream $stream
-        { Close-NetworkResources -NetworkStream $stream } | Should -Not -Throw
+        $connection = [PSCustomObject]@{
+            SslStream = $null
+            NetworkStream = $stream
+            TcpClient = $null
+        }
+        Close-NetworkResources -Connection $connection
+        { Close-NetworkResources -Connection $connection } | Should -Not -Throw
     }
 }

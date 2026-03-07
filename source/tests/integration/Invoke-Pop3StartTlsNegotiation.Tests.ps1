@@ -129,23 +129,29 @@ Describe 'Invoke-Pop3StartTlsNegotiation integration' {
                 $false
             )
 
-            $clientSslStream = Start-TlsHandshake `
-                -NetworkStream $clientConn.NetworkStream `
+            $clientHandshakeStream = Start-TlsHandshake `
+                -Connection $clientConn `
                 -TargetHost 'localhost' `
                 -SslProtocols ([System.Security.Authentication.SslProtocols]::Tls12) `
                 -TimeoutMs 5000 `
                 -SkipCertificateValidation
+            $clientConn.SslStream = $clientHandshakeStream
 
             $serverHandshakeTask.Wait(5000) | Should -BeTrue
 
-            $remoteCertificate = Get-RemoteCertificate -SslStream $clientSslStream
+            $remoteCertificate = Get-RemoteCertificate -Connection $clientConn
             $remoteCertificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
             $remoteCertificate.Subject | Should -Match 'CN=localhost'
         }
         finally {
             if ($remoteCertificate) { $remoteCertificate.Dispose() }
-            Close-NetworkResources -SslStream $clientSslStream -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
-            Close-NetworkResources -SslStream $serverSsl -NetworkStream $serverStream -TcpClient $serverClient
+            $serverConnection = [PSCustomObject]@{
+                TcpClient = $serverClient
+                NetworkStream = $serverStream
+                SslStream = $serverSsl
+            }
+            Close-NetworkResources -Connection $clientConn
+            Close-NetworkResources -Connection $serverConnection
             $listener.Stop()
         }
     }
@@ -178,8 +184,13 @@ Describe 'Invoke-Pop3StartTlsNegotiation integration' {
             { Invoke-Pop3StartTlsNegotiation -NetworkStream $clientConn.NetworkStream -TimeoutMs 5000 } | Should -Throw '*STLS*'
         }
         finally {
-            Close-NetworkResources -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
-            Close-NetworkResources -NetworkStream $serverStream -TcpClient $serverClient
+            $serverConnection = [PSCustomObject]@{
+                TcpClient = $serverClient
+                NetworkStream = $serverStream
+                SslStream = $null
+            }
+            Close-NetworkResources -Connection $clientConn
+            Close-NetworkResources -Connection $serverConnection
             $listener.Stop()
         }
     }

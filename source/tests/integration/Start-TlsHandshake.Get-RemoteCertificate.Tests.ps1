@@ -45,8 +45,8 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
         $serverClient = $null
         $serverStream = $null
         $serverSsl = $null
+        $serverConnection = $null
         $clientConn = $null
-        $clientSslStream = $null
         $tlsDetails = $null
 
         try {
@@ -66,16 +66,17 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
                 $false
             )
 
-            $clientSslStream = Start-TlsHandshake `
-                -NetworkStream $clientConn.NetworkStream `
+            $clientHandshakeStream = Start-TlsHandshake `
+                -Connection $clientConn `
                 -TargetHost 'localhost' `
                 -SslProtocols ([System.Security.Authentication.SslProtocols]::Tls12) `
                 -TimeoutMs 5000 `
                 -SkipCertificateValidation
+            $clientConn.SslStream = $clientHandshakeStream
 
             $serverHandshakeTask.Wait(5000) | Should -BeTrue
-            $tlsDetails = Get-TlsHandshakeDetails -SslStream $clientSslStream
-            $remoteCertificate = Get-RemoteCertificate -SslStream $clientSslStream
+            $tlsDetails = Get-TlsHandshakeDetails -Connection $clientConn
+            $remoteCertificate = Get-RemoteCertificate -Connection $clientConn
 
             $remoteCertificate | Should -BeOfType ([System.Security.Cryptography.X509Certificates.X509Certificate2])
             $remoteCertificate.Subject | Should -Match 'CN=localhost'
@@ -90,8 +91,13 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
             $remoteCertificate.Dispose()
         }
         finally {
-            Close-NetworkResources -SslStream $clientSslStream -NetworkStream $clientConn.NetworkStream -TcpClient $clientConn.TcpClient
-            Close-NetworkResources -SslStream $serverSsl -NetworkStream $serverStream -TcpClient $serverClient
+            $serverConnection = [PSCustomObject]@{
+                TcpClient = $serverClient
+                NetworkStream = $serverStream
+                SslStream = $serverSsl
+            }
+            Close-NetworkResources -Connection $clientConn
+            Close-NetworkResources -Connection $serverConnection
             $listener.Stop()
         }
     }
@@ -100,7 +106,12 @@ Describe 'Start-TlsHandshake and Get-RemoteCertificate integration' {
         $memoryStream = [System.IO.MemoryStream]::new()
         $ssl = [System.Net.Security.SslStream]::new($memoryStream)
         try {
-            { Get-RemoteCertificate -SslStream $ssl } | Should -Throw
+            $connection = [PSCustomObject]@{
+                TcpClient = $null
+                NetworkStream = $memoryStream
+                SslStream = $ssl
+            }
+            { Get-RemoteCertificate -Connection $connection } | Should -Throw
         }
         finally {
             $ssl.Dispose()

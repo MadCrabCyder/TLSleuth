@@ -384,6 +384,13 @@ MIT --- see LICENSE
 
 # Release Notes
 
+> ### 2.3.1 (08-Mar-2026)
+> * Refactored internal TLS helpers to use a shared connection context object (`TcpClient`, `NetworkStream`, `SslStream`) instead of passing resources separately
+> * Updated `Start-TlsHandshake` to create the TLS stream from `Connection.NetworkStream` and populate `Connection.SslStream`
+> * Updated internal call paths in `Get-TLSleuthCertificate` and `Test-TLSleuthProtocol` to use connection-context based helpers
+> * Updated helper-focused unit/integration tests for the new internal helper contract
+> * No public command parameter or output contract changes
+
 > ### 2.3.0 (07-Mar-2026)
 > * Introduced `Test-TLSleuthProtocol` to test endpoint protocol support across runtime-available TLS protocol versions
 > * Added structured `TLSleuth.ProtocolTestResult` output per protocol attempt, including negotiated TLS details and per-attempt errors

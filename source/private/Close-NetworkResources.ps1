@@ -5,17 +5,25 @@ function Close-NetworkResources {
 #>
     [CmdletBinding()]
     param(
-        [System.Net.Security.SslStream]$SslStream,
-        [System.IO.Stream]$NetworkStream,
-        [System.Net.Sockets.TcpClient]$TcpClient
+        [psobject]$Connection
     )
 
     $fn = $MyInvocation.MyCommand.Name
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Write-Verbose "[$fn] Begin (SslStream=$($null -ne $SslStream), NetworkStream=$($null -ne $NetworkStream), TcpClient=$($null -ne $TcpClient))"
+
+    $sslStream = $null
+    $networkStream = $null
+    $tcpClient = $null
+    if ($Connection) {
+        if ($Connection.PSObject.Properties['SslStream']) { $sslStream = $Connection.SslStream }
+        if ($Connection.PSObject.Properties['NetworkStream']) { $networkStream = $Connection.NetworkStream }
+        if ($Connection.PSObject.Properties['TcpClient']) { $tcpClient = $Connection.TcpClient }
+    }
+
+    Write-Verbose "[$fn] Begin (SslStream=$($null -ne $sslStream), NetworkStream=$($null -ne $networkStream), TcpClient=$($null -ne $tcpClient))"
 
     try {
-        foreach ($resource in @($SslStream, $NetworkStream, $TcpClient)) {
+        foreach ($resource in @($sslStream, $networkStream, $tcpClient)) {
             if ($null -eq $resource) { continue }
 
             try {

@@ -8,7 +8,7 @@
 RootModule = '.\TLSleuth.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.0'
+ModuleVersion = '2.3.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop','Core')
@@ -113,7 +113,7 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/source/assets/TLSleuth-icon.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = '2.3.0: Introduced Test-TLSleuthProtocol for protocol support testing across runtime-available TLS versions, with structured per-protocol results and unit test coverage.'
+        ReleaseNotes = '2.3.1: Refactored internal TLS helpers to use a shared connection context object and updated internal call sites/tests without public API changes.'
 
     } # End of PSData hashtable
 

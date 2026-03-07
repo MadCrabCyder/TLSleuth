@@ -11,7 +11,7 @@ function Start-TlsHandshake {
     param(
         [Parameter(Mandatory)]
         [ValidateNotNull()]
-        [System.IO.Stream]$NetworkStream,
+        [psobject]$Connection,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -31,6 +31,14 @@ function Start-TlsHandshake {
     Write-Verbose "[$fn] Begin (Target=$TargetHost, Protocols=$SslProtocols, TimeoutMs=$TimeoutMs, SkipValidation=$SkipCertificateValidation)"
     $ssl = $null
     $handshakeSucceeded = $false
+
+    $networkStream = $null
+    if ($Connection.PSObject.Properties['NetworkStream']) {
+        $networkStream = $Connection.NetworkStream
+    }
+    if ($null -eq $networkStream) {
+        throw [System.InvalidOperationException]::new('Connection context must include a non-null NetworkStream.')
+    }
 
     if (-not ('TLSleuth.CertificateValidationCallbacksV2' -as [type])) {
         Add-Type -TypeDefinition @"
@@ -134,10 +142,17 @@ namespace TLSleuth
 
     try {
         $ssl = [System.Net.Security.SslStream]::new(
-            $NetworkStream,
+            $networkStream,
             $false,
             [System.Net.Security.RemoteCertificateValidationCallback][TLSleuth.CertificateValidationCallbacksV2]::CaptureAndValidate
         )
+
+        if ($Connection.PSObject.Properties['SslStream']) {
+            $Connection.SslStream = $ssl
+        }
+        else {
+            $Connection | Add-Member -NotePropertyName 'SslStream' -NotePropertyValue $ssl
+        }
 
         [TLSleuth.CertificateValidationCallbacksV2]::Register($ssl, [bool]$SkipCertificateValidation)
 

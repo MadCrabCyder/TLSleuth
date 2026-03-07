@@ -11,19 +11,27 @@ function Get-RemoteCertificate {
     param(
         [Parameter(Mandatory)]
         [ValidateNotNull()]
-        [System.Net.Security.SslStream]$SslStream
+        [psobject]$Connection
     )
 
     $fn = $MyInvocation.MyCommand.Name
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Write-Verbose "[$fn] Begin (IsAuthenticated=$($SslStream.IsAuthenticated))"
+    $sslStream = $null
+    if ($Connection.PSObject.Properties['SslStream']) {
+        $sslStream = $Connection.SslStream
+    }
+    if ($null -eq $sslStream) {
+        throw [System.InvalidOperationException]::new('Connection context does not contain an authenticated SslStream.')
+    }
+
+    Write-Verbose "[$fn] Begin (IsAuthenticated=$($sslStream.IsAuthenticated))"
 
     try {
-        if (-not $SslStream.RemoteCertificate) {
+        if (-not $sslStream.RemoteCertificate) {
             throw [System.InvalidOperationException]::new('Remote endpoint did not provide a certificate.')
         }
 
-        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($SslStream.RemoteCertificate)
+        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($sslStream.RemoteCertificate)
         Write-Verbose "[$fn] Retrieved certificate Subject='$($certificate.Subject)'"
         $certificate
     }
