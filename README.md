@@ -76,17 +76,13 @@ For a deeper explanation of how the command works and examples of how to use it,
 - [Output Model](#output-model)
   - [Get-TLSleuthCertificate](#get-tlsleuthcertificate)
   - [Test-TLSleuthProtocol](#test-tlsleuthprotocol)
-- [Architecture Overview](#architecture-overview)
-  - [Project Layout](#project-layout)
-- [Building from Source](#building-from-source)
-  - [Requirements](#requirements)
-  - [Build](#build)
+- [Development](#development)
 - [Testing](#testing)
   - [Run All Tests](#run-all-tests)
 - [Contributing](#contributing)
   - [Guidelines](#guidelines)
 - [License](#license)
-- [Release Notes](#release-notes)
+- [Changelog](#changelog)
 ------------------------------------------------------------------------
 
 ## Limitations and When to Use a Dedicated TLS Scanner
@@ -298,64 +294,9 @@ Designed for stable automation and predictable output contracts across both comm
 
 ------------------------------------------------------------------------
 
-# Architecture Overview
+# Development
 
-TLSleuth follows a **source-first modular design**:
-
-- One function per file
-- Clear separation of public vs private functions
-- Pester-driven development
-- Stable output contract
-- Minimal side effects
-
-## Project Layout
-
-    TLSleuth/
-    ├── docs/
-    ├── examples/
-    ├── output/
-    └── source/
-        ├── private/
-        ├── public/
-        └── tests/
-            ├── integration/
-            └── unit/
-
-------------------------------------------------------------------------
-
-# Building from Source
-
-TLSleuth uses **ModuleBuilder (Build-Module)**.
-
-The repository contains individual function files. During build:
-
-- Functions are merged into a single `.psm1`
-- The module manifest is generated/updated
-- Public functions are auto-exported
-- Build settings are read from `/build.psd1`
-- Compiled output is written to `/output`
-
-## Requirements
-
-``` powershell
-Install-Module ModuleBuilder -Scope CurrentUser
-```
-
-## Build
-
-From project root:
-
-``` powershell
-Build-Module
-```
-
-Force clean rebuild:
-
-``` powershell
-Build-Module -Clean
-```
-
-Do not modify files in `/output` directly.
+See [docs/development.md](docs/development.md) for architecture, build, and Invoke-Build task details.
 
 ------------------------------------------------------------------------
 
@@ -366,12 +307,18 @@ TLSleuth uses **Pester**.
 ## Run All Tests
 
 ``` powershell
-Invoke-Pester -Path ./source/tests -Output Detailed
+Invoke-Build Test
 ```
 
 Unit tests use mocks for network calls.
 Integration tests perform live TLS handshakes and may require internet
 access.
+
+Run integration tests explicitly:
+
+``` powershell
+Invoke-Build IntegrationTest
+```
 
 ------------------------------------------------------------------------
 
@@ -396,59 +343,9 @@ MIT --- see LICENSE
 
 ------------------------------------------------------------------------
 
-# Release Notes
+# Changelog
 
-> ### 2.3.2 (08-Mar-2026)
-> * Added `Invoke-TlsTransportNegotiation` to centralize transport negotiation dispatch for `ImplicitTls`, `SmtpStartTls`, `ImapStartTls`, and `Pop3StartTls`
-> * Simplified `Get-TLSleuthCertificate` and `Test-TLSleuthProtocol` orchestration to: connect -> transport negotiation -> TLS handshake -> result processing
-> * Removed protocol-specific STARTTLS branching from public command implementations; negotiation is now fully delegated to private transport negotiation helper(s)
-> * Preserved public parameters, output contracts, timeout behavior, and existing STARTTLS integration behavior
-
-> ### 2.3.1 (08-Mar-2026)
-> * Refactored internal TLS helpers to use a shared connection context object (`TcpClient`, `NetworkStream`, `SslStream`) instead of passing resources separately
-> * Updated `Start-TlsHandshake` to create the TLS stream from `Connection.NetworkStream` and populate `Connection.SslStream`
-> * Updated internal call paths in `Get-TLSleuthCertificate` and `Test-TLSleuthProtocol` to use connection-context based helpers
-> * Updated helper-focused unit/integration tests for the new internal helper contract
-> * No public command parameter or output contract changes
-
-> ### 2.3.0 (07-Mar-2026)
-> * Introduced `Test-TLSleuthProtocol` to test endpoint protocol support across runtime-available TLS protocol versions
-> * Added structured `TLSleuth.ProtocolTestResult` output per protocol attempt, including negotiated TLS details and per-attempt errors
-> * Added unit tests for protocol iteration, failure continuation, and STARTTLS negotiation behavior
-
-> ### 2.2.0 (03-Mar-2026)
-> * Refactored TLS handshake detail extraction into `Get-TlsHandshakeDetails`
-> * Added additional TLS/session fields to `Get-TLSleuthCertificate` output model
-
-> ### 2.1.0 (02-Mar-2026)
-> * Added `ImapStartTls` and `Pop3StartTls` transports
-> * Refactored STARTTLS/STLS negotiation into shared reusable helpers
-> * You can now retrieve invalid certs (when skipping validation) and still see explicit validation failure details
-
-> ### 2.0.0 (28-Feb-2026)
-> **Major Refactor**
-> * Significant internal refactor to simplify and modularize helper functions
-> * Improved separation of transport, handshake, and certificate extraction logic
-> * Enhanced maintainability and extensibility of the TLS negotiation pipeline
-
-> ### 1.0.2 (13-Sep-2025)
-> * CHANGE: Rename SNI override parameter from **-ServerName** to **-TargetHost**
-> * CHANGE: Pipeline binding tightened
->   * `Hostname`: accepts from pipeline (by value & property name)
->   * `Port`, `TargetHost`: accept **by property name** only
-> * IMPROVED: Update Alias for **-TargetHost** to SNI and ServerName
-> * ADD: `examples\Check-CertExpiry.ps1`
-
-> ### 1.0.1 (06-Sep-2025)
-> * Add MIT License
-> * Add TLSleuth Icon and Site details to manifest
-
-> ### 1.0.0 (05-Sep-2025)
-> * Get-TLSleuthCertificate: fetch TLS handshake + certificate details
-> * Optional chain build and revocation check
-> * Extract SANs, AIA, CRL Distribution Points
-> * Structured, script-friendly output; verbose diagnostics
-> * Pester tests with mocks; optional integration tests
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 ------------------------------------------------------------------------
 
 Built with ❤️ for operators and automation engineers who need fast,

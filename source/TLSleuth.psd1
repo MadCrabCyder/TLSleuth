@@ -8,7 +8,7 @@
 RootModule = '.\TLSleuth.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.2'
+ModuleVersion = '2.3.3'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop','Core')
@@ -113,7 +113,7 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/source/assets/TLSleuth-icon.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = '2.3.2: Added Invoke-TlsTransportNegotiation and refactored public command transport orchestration to use centralized internal transport negotiation with no public API changes.'
+        ReleaseNotes = '2.3.3: Added Invoke-Build CI task orchestration, PSScriptAnalyzer settings, release metadata validation, and tag-driven PowerShell Gallery publishing workflow support.'
 
     } # End of PSData hashtable
 
