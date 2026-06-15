@@ -31,7 +31,6 @@ function Invoke-TlsTransportNegotiation {
     # Declarative transport adapter table keeps public orchestration logic transport-agnostic.
     $protocolAdapters = @{
         ImplicitTls = {
-            param($AdapterConnection, $AdapterOptions)
             Write-Verbose "[$fn] Transport ImplicitTls selected; no plaintext negotiation required."
         }
         SmtpStartTls = {
@@ -54,13 +53,13 @@ function Invoke-TlsTransportNegotiation {
                 -TimeoutMs $timeoutMs | Out-Null
         }
         ImapStartTls = {
-            param($AdapterConnection, $AdapterOptions)
+            param($AdapterConnection)
             Invoke-ImapStartTlsNegotiation `
                 -NetworkStream $AdapterConnection.NetworkStream `
                 -TimeoutMs $timeoutMs | Out-Null
         }
         Pop3StartTls = {
-            param($AdapterConnection, $AdapterOptions)
+            param($AdapterConnection)
             Invoke-Pop3StartTlsNegotiation `
                 -NetworkStream $AdapterConnection.NetworkStream `
                 -TimeoutMs $timeoutMs | Out-Null
@@ -84,4 +83,3 @@ function Invoke-TlsTransportNegotiation {
         Write-Verbose "[$fn] Complete in $($sw.Elapsed)"
     }
 }
-

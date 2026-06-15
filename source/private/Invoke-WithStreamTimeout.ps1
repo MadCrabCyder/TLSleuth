@@ -40,8 +40,19 @@ function Invoke-WithStreamTimeout {
     }
     finally {
         if ($timeoutsApplied) {
-            try { $Stream.ReadTimeout = $originalReadTimeout } catch {}
-            try { $Stream.WriteTimeout = $originalWriteTimeout } catch {}
+            try {
+                $Stream.ReadTimeout = $originalReadTimeout
+            }
+            catch {
+                Write-Debug "[$fn] Failed to restore stream read timeout: $($_.Exception.GetType().FullName)"
+            }
+
+            try {
+                $Stream.WriteTimeout = $originalWriteTimeout
+            }
+            catch {
+                Write-Debug "[$fn] Failed to restore stream write timeout: $($_.Exception.GetType().FullName)"
+            }
         }
 
         $sw.Stop()

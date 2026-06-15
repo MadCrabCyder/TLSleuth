@@ -94,7 +94,6 @@ Describe 'Invoke-ImapStartTlsNegotiation integration' {
         $serverSsl = $null
         $serverHandshakeTask = $null
         $clientConn = $null
-        $clientSslStream = $null
         $remoteCertificate = $null
 
         try {

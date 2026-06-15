@@ -94,7 +94,6 @@ Describe 'Invoke-Pop3StartTlsNegotiation integration' {
         $serverSsl = $null
         $serverHandshakeTask = $null
         $clientConn = $null
-        $clientSslStream = $null
         $remoteCertificate = $null
 
         try {

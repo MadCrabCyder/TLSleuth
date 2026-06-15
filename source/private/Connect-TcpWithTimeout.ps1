@@ -40,7 +40,12 @@ function Connect-TcpWithTimeout {
         [PSCustomObject]@{ TcpClient = $tcp; NetworkStream = $netStream }
     }
     catch {
-        try { if ($tcp) { $tcp.Dispose() } } catch {}
+        try {
+            if ($tcp) { $tcp.Dispose() }
+        }
+        catch {
+            Write-Debug "[$fn] Failed to dispose TcpClient after connection error: $($_.Exception.GetType().FullName)"
+        }
 
         $errorToThrow = $_.Exception
         if ($errorToThrow -is [System.AggregateException] -and $errorToThrow.InnerException) {

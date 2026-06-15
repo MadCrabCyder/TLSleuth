@@ -174,7 +174,9 @@ namespace TLSleuth
                 $ssl.Dispose()
             }
         }
-        catch {}
+        catch {
+            Write-Debug "[$fn] Failed to dispose SslStream after handshake error: $($_.Exception.GetType().FullName)"
+        }
 
         $errorToThrow = $_.Exception
         if ($errorToThrow -is [System.AggregateException] -and $errorToThrow.InnerException) {
@@ -188,7 +190,9 @@ namespace TLSleuth
                 [TLSleuth.CertificateValidationCallbacksV2]::Cleanup($ssl)
             }
         }
-        catch {}
+        catch {
+            Write-Debug "[$fn] Failed to clean up certificate validation callback state: $($_.Exception.GetType().FullName)"
+        }
         $sw.Stop()
         Write-Verbose "[$fn] Complete in $($sw.Elapsed)"
     }

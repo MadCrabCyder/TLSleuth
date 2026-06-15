@@ -99,7 +99,9 @@ function Get-TlsHandshakeDetails {
                 [TLSleuth.CertificateValidationCallbacksV2]::Cleanup($sslStream)
             }
         }
-        catch {}
+        catch {
+            Write-Debug "[$fn] Failed to clean up certificate validation callback state: $($_.Exception.GetType().FullName)"
+        }
 
         $sw.Stop()
         Write-Verbose "[$fn] Complete in $($sw.Elapsed)"

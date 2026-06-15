@@ -24,7 +24,7 @@ function Invoke-Pop3StartTlsNegotiation {
         throw [System.InvalidOperationException]::new('POP3 STLS negotiation requires a readable and writable stream.')
     }
 
-    function Parse-Pop3StatusLine {
+    function ConvertFrom-Pop3StatusLine {
         param(
             [Parameter(Mandatory)]
             [ValidateNotNullOrEmpty()]
@@ -81,7 +81,7 @@ function Invoke-Pop3StartTlsNegotiation {
     try {
         Invoke-WithStreamTimeout -Stream $NetworkStream -TimeoutMs $TimeoutMs -ScriptBlock {
             $greetingLine = Read-TextProtocolLine -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs -ProtocolName 'POP3'
-            $greeting = Parse-Pop3StatusLine -Line $greetingLine
+            $greeting = ConvertFrom-Pop3StatusLine -Line $greetingLine
             if (-not $greeting.IsOk) {
                 throw [System.InvalidOperationException]::new("POP3 server did not return +OK greeting. Received: $($greeting.Message)")
             }
@@ -89,7 +89,7 @@ function Invoke-Pop3StartTlsNegotiation {
 
             Send-TextProtocolCommand -Stream $NetworkStream -Command 'CAPA'
             $capaStatusLine = Read-TextProtocolLine -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs -ProtocolName 'POP3'
-            $capaStatus = Parse-Pop3StatusLine -Line $capaStatusLine
+            $capaStatus = ConvertFrom-Pop3StatusLine -Line $capaStatusLine
             if (-not $capaStatus.IsOk) {
                 throw [System.InvalidOperationException]::new("POP3 CAPA command failed. Received: $($capaStatus.Message)")
             }
@@ -110,7 +110,7 @@ function Invoke-Pop3StartTlsNegotiation {
 
             Send-TextProtocolCommand -Stream $NetworkStream -Command 'STLS'
             $stlsStatusLine = Read-TextProtocolLine -Stream $NetworkStream -ReadTimeoutMs $TimeoutMs -ProtocolName 'POP3'
-            $stlsStatus = Parse-Pop3StatusLine -Line $stlsStatusLine
+            $stlsStatus = ConvertFrom-Pop3StatusLine -Line $stlsStatusLine
             if (-not $stlsStatus.IsOk) {
                 throw [System.InvalidOperationException]::new("POP3 STLS command was not accepted. Received: $($stlsStatus.Message)")
             }

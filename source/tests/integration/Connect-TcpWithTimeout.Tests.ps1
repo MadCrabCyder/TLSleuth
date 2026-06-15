@@ -18,8 +18,20 @@ Describe 'Connect-TcpWithTimeout integration' {
                 $client = $acceptTask.Result
                 $client.Dispose()
             } finally {
-                try { $conn.NetworkStream.Dispose() } catch {}
-                try { $conn.TcpClient.Close(); $conn.TcpClient.Dispose() } catch {}
+                try {
+                    $conn.NetworkStream.Dispose()
+                }
+                catch {
+                    Write-Debug "Failed to dispose integration test network stream: $($_.Exception.GetType().FullName)"
+                }
+
+                try {
+                    $conn.TcpClient.Close()
+                    $conn.TcpClient.Dispose()
+                }
+                catch {
+                    Write-Debug "Failed to dispose integration test TCP client: $($_.Exception.GetType().FullName)"
+                }
             }
         } finally {
             $listener.Stop()
