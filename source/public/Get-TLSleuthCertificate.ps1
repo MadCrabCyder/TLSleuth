@@ -42,8 +42,6 @@ function Get-TLSleuthCertificate {
         $fn = $MyInvocation.MyCommand.Name
         $pipelineSw = [System.Diagnostics.Stopwatch]::StartNew()
         $processed = 0
-        $timeoutMs = $TimeoutSec * 1000
-
         $sslProtocols = ConvertTo-TlsProtocolOptions -TlsProtocols $TlsProtocols
         Write-Verbose "[$fn] Begin (Transport=$Transport, TimeoutSec=$TimeoutSec, Protocols=$($TlsProtocols -join ','))"
 
@@ -53,35 +51,33 @@ function Get-TLSleuthCertificate {
         $itemSw = [System.Diagnostics.Stopwatch]::StartNew()
         $processed++
 
-        $target = if ([string]::IsNullOrWhiteSpace($TargetHost)) { $Hostname } else { $TargetHost }
-
         $connection = $null
         $tlsDetails = $null
         $certificate = $null
+        $context = New-TlsOperationContext `
+            -Hostname $Hostname `
+            -Port $Port `
+            -TargetHost $TargetHost `
+            -Transport $Transport `
+            -SmtpEhloName $SmtpEhloName `
+            -TimeoutSec $TimeoutSec
 
         try {
-            $connection = Invoke-WithRetry -ScriptBlock {
-                Connect-TcpWithTimeout -Hostname $Hostname -Port $Port -TimeoutMs $timeoutMs
-            }
-            if (-not $connection.PSObject.Properties['SslStream']) {
-                $connection | Add-Member -NotePropertyName 'SslStream' -NotePropertyValue $null
-            }
-
-            $transportOptions = [PSCustomObject]@{
-                TimeoutMs    = $timeoutMs
-                SmtpEhloName = $SmtpEhloName
-            }
+            $connection = New-TlsConnectionContext `
+                -Hostname $context.Hostname `
+                -Port $context.Port `
+                -TimeoutMs $context.TimeoutMs
 
             Invoke-TlsTransportNegotiation `
-                -Transport $Transport `
+                -Transport $context.Transport `
                 -Connection $connection `
-                -Options $transportOptions
+                -Options $context.TransportOptions
 
             $handshakeStream = Start-TlsHandshake `
                 -Connection $connection `
-                -TargetHost $target `
+                -TargetHost $context.TargetHost `
                 -SslProtocols $sslProtocols `
-                -TimeoutMs $timeoutMs `
+                -TimeoutMs $context.TimeoutMs `
                 -SkipCertificateValidation:$SkipCertificateValidation
             $connection.SslStream = $handshakeStream
 
@@ -91,9 +87,9 @@ function Get-TLSleuthCertificate {
             $validity = Test-TlsCertificateValidity -Certificate $certificate
 
             ConvertTo-TlsCertificateResult `
-                -Hostname $Hostname `
-                -Port $Port `
-                -TargetHost $target `
+                -Hostname $context.Hostname `
+                -Port $context.Port `
+                -TargetHost $context.TargetHost `
                 -Certificate $certificate `
                 -Validity $validity `
                 -CertificateValidationPassed $tlsDetails.CertificateValidationPassed `

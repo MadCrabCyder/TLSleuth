@@ -1,6 +1,7 @@
 BeforeAll {
     $scriptRoot = $PSScriptRoot
     if (-not $scriptRoot) { $scriptRoot = Split-Path -Parent $PSCommandPath }
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsRuntimeProtocol.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsProtocolOptions.ps1')
 }
 
@@ -22,5 +23,14 @@ Describe 'ConvertTo-TlsProtocolOptions' {
 
     It 'throws for unsupported value' {
         { ConvertTo-TlsProtocolOptions -TlsProtocols @('Tls99') } | Should -Throw
+    }
+
+    It 'throws when a known protocol is not available on the runtime' {
+        Mock Get-TlsRuntimeProtocol {
+            [System.Security.Authentication.SslProtocols]::Tls12
+        }
+
+        { ConvertTo-TlsProtocolOptions -TlsProtocols @('Tls13') } |
+            Should -Throw -ExpectedMessage "*not available on this runtime*"
     }
 }

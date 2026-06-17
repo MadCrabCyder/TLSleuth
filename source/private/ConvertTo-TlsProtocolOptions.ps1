@@ -19,31 +19,33 @@ function ConvertTo-TlsProtocolOptions {
     Write-Verbose "[$fn] Begin (TlsProtocols=$($TlsProtocols -join ','))"
 
     try {
-        $map = @{
-            SystemDefault = [System.Security.Authentication.SslProtocols]::None
-            Ssl3          = [System.Security.Authentication.SslProtocols]::Ssl3
-            Tls           = [System.Security.Authentication.SslProtocols]::Tls
-            Tls11         = [System.Security.Authentication.SslProtocols]::Tls11
-            Tls12         = [System.Security.Authentication.SslProtocols]::Tls12
-            Tls13         = [System.Security.Authentication.SslProtocols]::Tls13
+        $explicitProtocolNames = @('Ssl3','Tls','Tls11','Tls12','Tls13')
+
+        if ($TlsProtocols -contains 'SystemDefault') {
+            if ($TlsProtocols.Count -gt 1) {
+                throw [System.ArgumentException]::new('SystemDefault cannot be combined with explicit protocol values.')
+            }
+
+            Write-Verbose "[$fn] Using SystemDefault TLS policy."
+            return [System.Security.Authentication.SslProtocols]::None
+        }
+
+        $availableProtocolMap = @{}
+        foreach ($protocol in Get-TlsRuntimeProtocol -ProtocolName $explicitProtocolNames) {
+            $availableProtocolMap[$protocol.ToString()] = $protocol
         }
 
         $result = [System.Security.Authentication.SslProtocols]::None
         foreach ($name in $TlsProtocols) {
-            if (-not $map.ContainsKey($name)) {
+            if ($explicitProtocolNames -notcontains $name) {
                 throw [System.ArgumentException]::new("Unsupported TLS protocol value: $name")
             }
 
-            if ($name -eq 'SystemDefault') {
-                if ($TlsProtocols.Count -gt 1) {
-                    throw [System.ArgumentException]::new('SystemDefault cannot be combined with explicit protocol values.')
-                }
-
-                Write-Verbose "[$fn] Using SystemDefault TLS policy."
-                return [System.Security.Authentication.SslProtocols]::None
+            if (-not $availableProtocolMap.ContainsKey($name)) {
+                throw [System.PlatformNotSupportedException]::new("TLS protocol value '$name' is not available on this runtime.")
             }
 
-            $result = $result -bor $map[$name]
+            $result = $result -bor $availableProtocolMap[$name]
         }
 
         Write-Verbose "[$fn] Resolved protocols: $result"

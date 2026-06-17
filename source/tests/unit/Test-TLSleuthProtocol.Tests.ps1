@@ -2,7 +2,10 @@ BeforeAll {
     $scriptRoot = $PSScriptRoot
     if (-not $scriptRoot) { $scriptRoot = Split-Path -Parent $PSCommandPath }
 
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsRuntimeProtocol.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsOperationContext.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsConnectionContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Read-TextProtocolLine.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Send-TextProtocolCommand.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-WithStreamTimeout.ps1')
@@ -17,13 +20,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-WithRetry.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\public') 'Test-TLSleuthProtocol.ps1')
 
-    $script:expectedProtocols = @(
-        foreach ($name in @('Ssl3','Tls','Tls11','Tls12','Tls13')) {
-            if ([System.Enum]::GetNames([System.Security.Authentication.SslProtocols]) -contains $name) {
-                [System.Security.Authentication.SslProtocols]::$name
-            }
-        }
-    )
+    $script:expectedProtocols = @(Get-TlsRuntimeProtocol)
 }
 
 Describe 'Test-TLSleuthProtocol' {
@@ -116,6 +113,7 @@ Describe 'Test-TLSleuthProtocol' {
                 'ElapsedMs'
             )
             $row.ConnectionSuccessful | Should -BeTrue
+            $row.TargetHost | Should -Be 'example.test'
             $row.NegotiatedProtocol | Should -Be ([System.Security.Authentication.SslProtocols]::Tls12)
             $row.ForwardSecrecy | Should -BeTrue
             $row.ErrorMessage | Should -Be $null
@@ -166,5 +164,34 @@ Describe 'Test-TLSleuthProtocol' {
         Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times $script:expectedProtocols.Count -Scope It
         Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
+    }
+
+    It 'uses pipeline-bound connection and transport values through the operation context' {
+        $inputObject = [PSCustomObject]@{
+            Hostname     = 'mail.example.test'
+            Port         = 587
+            TargetHost   = 'sni.example.test'
+            Transport    = 'SmtpStartTls'
+            SmtpEhloName = 'client.example.test'
+        }
+
+        $result = $inputObject | Test-TLSleuthProtocol -TimeoutSec 12 -SkipCertificateValidation
+
+        $result.Count | Should -Be $script:expectedProtocols.Count
+        foreach ($row in $result) {
+            $row.Hostname | Should -Be 'mail.example.test'
+            $row.Port | Should -Be 587
+            $row.TargetHost | Should -Be 'sni.example.test'
+            $row.Transport | Should -Be 'SmtpStartTls'
+        }
+
+        Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times $script:expectedProtocols.Count -Scope It -ParameterFilter {
+            $EhloName -eq 'client.example.test' -and
+            $TimeoutMs -eq 12000
+        }
+        Assert-MockCalled Start-TlsHandshake -Times $script:expectedProtocols.Count -Scope It -ParameterFilter {
+            $TargetHost -eq 'sni.example.test' -and
+            $TimeoutMs -eq 12000
+        }
     }
 }

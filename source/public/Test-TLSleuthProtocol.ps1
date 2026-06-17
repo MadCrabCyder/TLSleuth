@@ -35,28 +35,20 @@ function Test-TLSleuthProtocol {
         $fn = $MyInvocation.MyCommand.Name
         $pipelineSw = [System.Diagnostics.Stopwatch]::StartNew()
         $processed = 0
-        $timeoutMs = $TimeoutSec * 1000
-
-        $knownProtocols = @('Ssl3','Tls','Tls11','Tls12','Tls13')
-        $enumNames = [System.Enum]::GetNames([System.Security.Authentication.SslProtocols])
-        $availableProtocols = @(
-            foreach ($name in $knownProtocols) {
-                if ($enumNames -contains $name) {
-                    [System.Security.Authentication.SslProtocols]::$name
-                }
-            }
-        )
-
-        if (-not $availableProtocols -or $availableProtocols.Count -eq 0) {
-            throw [System.InvalidOperationException]::new('No explicit SslProtocols values are available on this runtime.')
-        }
+        $availableProtocols = @(Get-TlsRuntimeProtocol)
 
         Write-Verbose "[$fn] Begin (Transport=$Transport, TimeoutSec=$TimeoutSec, Protocols=$($availableProtocols -join ','))"
     }
 
     process {
         $processed++
-        $target = if ([string]::IsNullOrWhiteSpace($TargetHost)) { $Hostname } else { $TargetHost }
+        $context = New-TlsOperationContext `
+            -Hostname $Hostname `
+            -Port $Port `
+            -TargetHost $TargetHost `
+            -Transport $Transport `
+            -SmtpEhloName $SmtpEhloName `
+            -TimeoutSec $TimeoutSec
 
         foreach ($protocol in $availableProtocols) {
             $itemSw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -66,28 +58,21 @@ function Test-TLSleuthProtocol {
             $errorMessage = $null
 
             try {
-                $connection = Invoke-WithRetry -ScriptBlock {
-                    Connect-TcpWithTimeout -Hostname $Hostname -Port $Port -TimeoutMs $timeoutMs
-                }
-                if (-not $connection.PSObject.Properties['SslStream']) {
-                    $connection | Add-Member -NotePropertyName 'SslStream' -NotePropertyValue $null
-                }
-
-                $transportOptions = [PSCustomObject]@{
-                    TimeoutMs    = $timeoutMs
-                    SmtpEhloName = $SmtpEhloName
-                }
+                $connection = New-TlsConnectionContext `
+                    -Hostname $context.Hostname `
+                    -Port $context.Port `
+                    -TimeoutMs $context.TimeoutMs
 
                 Invoke-TlsTransportNegotiation `
-                    -Transport $Transport `
+                    -Transport $context.Transport `
                     -Connection $connection `
-                    -Options $transportOptions
+                    -Options $context.TransportOptions
 
                 $handshakeStream = Start-TlsHandshake `
                     -Connection $connection `
-                    -TargetHost $target `
+                    -TargetHost $context.TargetHost `
                     -SslProtocols $protocol `
-                    -TimeoutMs $timeoutMs `
+                    -TimeoutMs $context.TimeoutMs `
                     -SkipCertificateValidation:$SkipCertificateValidation
                 $connection.SslStream = $handshakeStream
 
@@ -129,10 +114,10 @@ function Test-TLSleuthProtocol {
 
             $properties = [ordered]@{
                 PSTypeName                    = 'TLSleuth.ProtocolTestResult'
-                Hostname                      = $Hostname
-                Port                          = $Port
-                TargetHost                    = $target
-                Transport                     = $Transport
+                Hostname                      = $context.Hostname
+                Port                          = $context.Port
+                TargetHost                    = $context.TargetHost
+                Transport                     = $context.Transport
                 Protocol                      = $protocol
                 ConnectionSuccessful          = $connectionSuccessful
                 ErrorMessage                  = $errorMessage

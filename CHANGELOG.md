@@ -1,9 +1,10 @@
 # Changelog
 ## Unreleased
 - Added contract snapshot coverage for public result objects and centralized shared TLS/session result property mapping.
+- Centralized public command operation context, runtime TLS protocol discovery, and transport adapter invocation shape.
 - Moved release note extraction into Invoke-Build, added release checklist documentation, improved workflow dependency caching, and documented PowerShell runtime compatibility expectations.
 
-## 2.3.3 (16-May-2026)
+## 2.3.3 (15-Jun-2026)
 - Added Invoke-Build task orchestration for analysis, validation, unit tests, integration tests, build, rebuild, and clean operations.
 - Updated build documentation to use Invoke-Build as the local CI entry point.
 - Added PSScriptAnalyzer settings and addressed initial analyzer warnings that were safe to fix without changing public command contracts.

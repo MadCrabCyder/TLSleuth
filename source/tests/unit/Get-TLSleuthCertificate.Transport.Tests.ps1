@@ -2,8 +2,11 @@ BeforeAll {
     $scriptRoot = $PSScriptRoot
     if (-not $scriptRoot) { $scriptRoot = Split-Path -Parent $PSCommandPath }
 
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsRuntimeProtocol.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsProtocolOptions.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsOperationContext.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsConnectionContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Read-TextProtocolLine.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Send-TextProtocolCommand.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-WithStreamTimeout.ps1')
@@ -166,5 +169,53 @@ Describe 'Get-TLSleuthCertificate transport selection' {
         Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
+    }
+
+    It 'defaults TargetHost to Hostname and converts TimeoutSec for connection and handshake' {
+        $result = Get-TLSleuthCertificate `
+            -Hostname 'default.example.test' `
+            -TlsProtocols 'Tls12' `
+            -SkipCertificateValidation `
+            -TimeoutSec 7
+
+        $result.TargetHost | Should -Be 'default.example.test'
+
+        Assert-MockCalled Connect-TcpWithTimeout -Times 1 -Scope It -ParameterFilter {
+            $Hostname -eq 'default.example.test' -and
+            $Port -eq 443 -and
+            $TimeoutMs -eq 7000
+        }
+        Assert-MockCalled Start-TlsHandshake -Times 1 -Scope It -ParameterFilter {
+            $TargetHost -eq 'default.example.test' -and
+            $TimeoutMs -eq 7000
+        }
+    }
+
+    It 'uses pipeline-bound connection and transport values through the operation context' {
+        $inputObject = [PSCustomObject]@{
+            Hostname     = 'mail.example.test'
+            Port         = 587
+            TargetHost   = 'sni.example.test'
+            Transport    = 'SmtpStartTls'
+            SmtpEhloName = 'client.example.test'
+        }
+
+        $result = $inputObject | Get-TLSleuthCertificate `
+            -TlsProtocols 'Tls12' `
+            -SkipCertificateValidation `
+            -TimeoutSec 12
+
+        $result.Hostname | Should -Be 'mail.example.test'
+        $result.Port | Should -Be 587
+        $result.TargetHost | Should -Be 'sni.example.test'
+
+        Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $EhloName -eq 'client.example.test' -and
+            $TimeoutMs -eq 12000
+        }
+        Assert-MockCalled Start-TlsHandshake -Times 1 -Scope It -ParameterFilter {
+            $TargetHost -eq 'sni.example.test' -and
+            $TimeoutMs -eq 12000
+        }
     }
 }
