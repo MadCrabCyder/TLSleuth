@@ -1,4 +1,7 @@
 # Changelog
+## Unreleased
+- Added contract snapshot coverage for public result objects and centralized shared TLS/session result property mapping.
+- Moved release note extraction into Invoke-Build, added release checklist documentation, improved workflow dependency caching, and documented PowerShell runtime compatibility expectations.
 
 ## 2.3.3 (16-May-2026)
 - Added Invoke-Build task orchestration for analysis, validation, unit tests, integration tests, build, rebuild, and clean operations.

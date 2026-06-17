@@ -1,5 +1,7 @@
 param(
-    [switch] $IncludeIntegrationTests
+    [switch] $IncludeIntegrationTests,
+    [string] $ReleaseVersion,
+    [string] $ReleaseNotesPath = (Join-Path $PSScriptRoot 'release-notes.md')
 )
 
 $ProjectRoot = $PSScriptRoot
@@ -67,6 +69,19 @@ function Get-ReleaseMetadata {
         throw "ModuleVersion is missing from '$SourceManifestPath'."
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($ReleaseVersion) -and $version -ne $ReleaseVersion) {
+        throw "ModuleVersion '$version' does not match release version '$ReleaseVersion'."
+    }
+
+    $manifestReleaseNotes = [string]$manifest.PrivateData.PSData.ReleaseNotes
+    if ([string]::IsNullOrWhiteSpace($manifestReleaseNotes)) {
+        throw "ReleaseNotes is missing from '$SourceManifestPath'."
+    }
+
+    if ($manifestReleaseNotes -notmatch "^$([regex]::Escape($version))\b") {
+        throw "ReleaseNotes in '$SourceManifestPath' must start with the ModuleVersion '$version'."
+    }
+
     $content = Get-Content -LiteralPath $ChangelogPath -Raw
     $pattern = "(?ms)^## $([regex]::Escape($version)) \([^)]+\)\s*(?<body>.*?)(?=^## |\z)"
     $match = [regex]::Match($content, $pattern)
@@ -80,8 +95,9 @@ function Get-ReleaseMetadata {
     }
 
     [PSCustomObject]@{
-        Version      = $version
-        ReleaseNotes = $releaseNotes
+        Version               = $version
+        ChangelogReleaseNotes = $releaseNotes
+        ManifestReleaseNotes  = $manifestReleaseNotes
     }
 }
 
@@ -120,6 +136,12 @@ task Analyze Init, {
 task ValidateReleaseMetadata {
     $metadata = Get-ReleaseMetadata
     "Release metadata validated for version $($metadata.Version)."
+}
+
+task WriteReleaseNotes ValidateReleaseMetadata, {
+    $metadata = Get-ReleaseMetadata
+    Set-Content -LiteralPath $ReleaseNotesPath -Value $metadata.ChangelogReleaseNotes
+    "Wrote release notes for version $($metadata.Version) to $ReleaseNotesPath."
 }
 
 task Test Init, UnitTest

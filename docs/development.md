@@ -72,9 +72,15 @@ Invoke-Build Build                   # Build module output with ModuleBuilder
 Invoke-Build Clean                   # Remove generated output
 Invoke-Build Validate                # Analyze, test, and build
 Invoke-Build ValidateReleaseMetadata # Check manifest version has changelog notes
+Invoke-Build WriteReleaseNotes       # Write release-notes.md from CHANGELOG.md
 Invoke-Build PublishBuilt            # Publish built output to PowerShell Gallery
 ```
 
 `.\build.ps1` remains available as a wrapper for the `Build` task.
 
 Analyzer exclusions live in `PSScriptAnalyzerSettings.psd1`.
+
+## Release And Compatibility
+
+- Release checklist: `docs/release.md`
+- Runtime compatibility notes: `docs/compatibility.md`

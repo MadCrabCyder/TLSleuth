@@ -117,6 +117,8 @@ Update-Module TLSleuth
 > Recommended: **PowerShell 7+**
 > Supported: Windows PowerShell 5.1 (reduced TLS/cipher detail)
 
+See [docs/compatibility.md](docs/compatibility.md) for runtime-specific TLS field behavior.
+
 ------------------------------------------------------------------------
 
 # Quick Start
@@ -297,6 +299,7 @@ Designed for stable automation and predictable output contracts across both comm
 # Development
 
 See [docs/development.md](docs/development.md) for architecture, build, and Invoke-Build task details.
+See [docs/release.md](docs/release.md) for the release checklist.
 
 ------------------------------------------------------------------------
 
