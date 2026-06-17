@@ -1,6 +1,7 @@
 BeforeAll {
     $scriptRoot = $PSScriptRoot
     if (-not $scriptRoot) { $scriptRoot = Split-Path -Parent $PSCommandPath }
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsSessionInfo.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsCertificateResult.ps1')
 
     $rsa = [System.Security.Cryptography.RSA]::Create(2048)
@@ -47,6 +48,38 @@ Describe 'ConvertTo-TlsCertificateResult' {
             -Elapsed ([timespan]::FromMilliseconds(123.4))
 
         $result.PSTypeNames | Should -Contain 'TLSleuth.CertificateResult'
+        $result.PSObject.Properties.Name | Should -Be @(
+            'Hostname'
+            'Port'
+            'TargetHost'
+            'Subject'
+            'Issuer'
+            'Thumbprint'
+            'SerialNumber'
+            'NotBefore'
+            'NotAfter'
+            'IsValidNow'
+            'DaysUntilExpiry'
+            'CertificateValidationPassed'
+            'CertificatePolicyErrors'
+            'CertificatePolicyErrorFlags'
+            'CertificateChainStatus'
+            'NegotiatedProtocol'
+            'CipherAlgorithm'
+            'CipherStrength'
+            'NegotiatedCipherSuite'
+            'HashAlgorithm'
+            'HashStrength'
+            'KeyExchangeAlgorithm'
+            'KeyExchangeStrength'
+            'IsMutuallyAuthenticated'
+            'IsEncrypted'
+            'IsSigned'
+            'NegotiatedApplicationProtocol'
+            'ForwardSecrecy'
+            'ElapsedMs'
+            'Certificate'
+        )
         $result.Hostname | Should -Be 'example.test'
         $result.Port | Should -Be 443
         $result.TargetHost | Should -Be 'example.test'

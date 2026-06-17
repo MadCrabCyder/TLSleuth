@@ -70,10 +70,26 @@ function ConvertTo-TlsCertificateResult {
     Write-Verbose "[$fn] Begin (Target=$($Hostname):$($Port), TargetHost=$TargetHost)"
 
     try {
-        $policyErrorFlags = if ($null -eq $CertificatePolicyErrorFlags) { ,([string[]]@()) } else { ,([string[]]$CertificatePolicyErrorFlags) }
-        $chainStatus = if ($null -eq $CertificateChainStatus) { ,([string[]]@()) } else { ,([string[]]$CertificateChainStatus) }
+        $sessionInfo = ConvertTo-TlsSessionInfo `
+            -CertificateValidationPassed $CertificateValidationPassed `
+            -CertificatePolicyErrors $CertificatePolicyErrors `
+            -CertificatePolicyErrorFlags $CertificatePolicyErrorFlags `
+            -CertificateChainStatus $CertificateChainStatus `
+            -NegotiatedProtocol $NegotiatedProtocol `
+            -CipherAlgorithm $CipherAlgorithm `
+            -CipherStrength $CipherStrength `
+            -NegotiatedCipherSuite $NegotiatedCipherSuite `
+            -HashAlgorithm $HashAlgorithm `
+            -HashStrength $HashStrength `
+            -KeyExchangeAlgorithm $KeyExchangeAlgorithm `
+            -KeyExchangeStrength $KeyExchangeStrength `
+            -IsMutuallyAuthenticated $IsMutuallyAuthenticated `
+            -IsEncrypted $IsEncrypted `
+            -IsSigned $IsSigned `
+            -NegotiatedApplicationProtocol $NegotiatedApplicationProtocol `
+            -ForwardSecrecy $ForwardSecrecy
 
-        $result = [PSCustomObject]@{
+        $properties = [ordered]@{
             PSTypeName         = 'TLSleuth.CertificateResult'
             Hostname           = $Hostname
             Port               = $Port
@@ -86,26 +102,16 @@ function ConvertTo-TlsCertificateResult {
             NotAfter           = $Certificate.NotAfter
             IsValidNow         = $Validity.IsValidNow
             DaysUntilExpiry    = $Validity.DaysUntilExpiry
-            CertificateValidationPassed = $CertificateValidationPassed
-            CertificatePolicyErrors     = $CertificatePolicyErrors
-            CertificatePolicyErrorFlags = $policyErrorFlags
-            CertificateChainStatus      = $chainStatus
-            NegotiatedProtocol = $NegotiatedProtocol
-            CipherAlgorithm    = $CipherAlgorithm
-            CipherStrength     = $CipherStrength
-            NegotiatedCipherSuite = $NegotiatedCipherSuite
-            HashAlgorithm         = $HashAlgorithm
-            HashStrength          = $HashStrength
-            KeyExchangeAlgorithm  = $KeyExchangeAlgorithm
-            KeyExchangeStrength   = $KeyExchangeStrength
-            IsMutuallyAuthenticated = $IsMutuallyAuthenticated
-            IsEncrypted             = $IsEncrypted
-            IsSigned                = $IsSigned
-            NegotiatedApplicationProtocol = $NegotiatedApplicationProtocol
-            ForwardSecrecy = $ForwardSecrecy
-            ElapsedMs          = [int][Math]::Round($Elapsed.TotalMilliseconds)
-            Certificate        = $Certificate
         }
+
+        foreach ($entry in $sessionInfo.GetEnumerator()) {
+            $properties[$entry.Key] = $entry.Value
+        }
+
+        $properties['ElapsedMs'] = [int][Math]::Round($Elapsed.TotalMilliseconds)
+        $properties['Certificate'] = $Certificate
+
+        $result = [PSCustomObject]$properties
 
         Write-Verbose "[$fn] Built result for Subject='$($Certificate.Subject)' with protocol '$NegotiatedProtocol'."
         $result

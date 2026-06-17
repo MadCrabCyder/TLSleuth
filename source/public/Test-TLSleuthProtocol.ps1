@@ -103,7 +103,31 @@ function Test-TLSleuthProtocol {
                 Close-NetworkResources -Connection $connection
             }
 
-            [PSCustomObject]@{
+            if ($tlsDetails) {
+                $sessionInfo = ConvertTo-TlsSessionInfo `
+                    -NegotiatedProtocol $tlsDetails.NegotiatedProtocol `
+                    -CipherAlgorithm $tlsDetails.CipherAlgorithm `
+                    -CipherStrength $tlsDetails.CipherStrength `
+                    -NegotiatedCipherSuite $tlsDetails.NegotiatedCipherSuite `
+                    -HashAlgorithm $tlsDetails.HashAlgorithm `
+                    -HashStrength $tlsDetails.HashStrength `
+                    -KeyExchangeAlgorithm $tlsDetails.KeyExchangeAlgorithm `
+                    -KeyExchangeStrength $tlsDetails.KeyExchangeStrength `
+                    -IsMutuallyAuthenticated $tlsDetails.IsMutuallyAuthenticated `
+                    -IsEncrypted $tlsDetails.IsEncrypted `
+                    -IsSigned $tlsDetails.IsSigned `
+                    -NegotiatedApplicationProtocol $tlsDetails.NegotiatedApplicationProtocol `
+                    -ForwardSecrecy $tlsDetails.ForwardSecrecy `
+                    -CertificateValidationPassed $tlsDetails.CertificateValidationPassed `
+                    -CertificatePolicyErrors $tlsDetails.CertificatePolicyErrors `
+                    -CertificatePolicyErrorFlags $tlsDetails.CertificatePolicyErrorFlags `
+                    -CertificateChainStatus $tlsDetails.CertificateChainStatus
+            }
+            else {
+                $sessionInfo = ConvertTo-TlsSessionInfo
+            }
+
+            $properties = [ordered]@{
                 PSTypeName                    = 'TLSleuth.ProtocolTestResult'
                 Hostname                      = $Hostname
                 Port                          = $Port
@@ -112,25 +136,33 @@ function Test-TLSleuthProtocol {
                 Protocol                      = $protocol
                 ConnectionSuccessful          = $connectionSuccessful
                 ErrorMessage                  = $errorMessage
-                NegotiatedProtocol            = if ($tlsDetails) { $tlsDetails.NegotiatedProtocol } else { $null }
-                CipherAlgorithm               = if ($tlsDetails) { $tlsDetails.CipherAlgorithm } else { $null }
-                CipherStrength                = if ($tlsDetails) { $tlsDetails.CipherStrength } else { $null }
-                NegotiatedCipherSuite         = if ($tlsDetails) { $tlsDetails.NegotiatedCipherSuite } else { $null }
-                HashAlgorithm                 = if ($tlsDetails) { $tlsDetails.HashAlgorithm } else { $null }
-                HashStrength                  = if ($tlsDetails) { $tlsDetails.HashStrength } else { $null }
-                KeyExchangeAlgorithm          = if ($tlsDetails) { $tlsDetails.KeyExchangeAlgorithm } else { $null }
-                KeyExchangeStrength           = if ($tlsDetails) { $tlsDetails.KeyExchangeStrength } else { $null }
-                IsMutuallyAuthenticated       = if ($tlsDetails) { $tlsDetails.IsMutuallyAuthenticated } else { $null }
-                IsEncrypted                   = if ($tlsDetails) { $tlsDetails.IsEncrypted } else { $null }
-                IsSigned                      = if ($tlsDetails) { $tlsDetails.IsSigned } else { $null }
-                NegotiatedApplicationProtocol = if ($tlsDetails) { $tlsDetails.NegotiatedApplicationProtocol } else { $null }
-                ForwardSecrecy                = if ($tlsDetails) { $tlsDetails.ForwardSecrecy } else { $null }
-                CertificateValidationPassed   = if ($tlsDetails) { $tlsDetails.CertificateValidationPassed } else { $null }
-                CertificatePolicyErrors       = if ($tlsDetails) { $tlsDetails.CertificatePolicyErrors } else { $null }
-                CertificatePolicyErrorFlags   = if ($tlsDetails) { $tlsDetails.CertificatePolicyErrorFlags } else { @() }
-                CertificateChainStatus        = if ($tlsDetails) { $tlsDetails.CertificateChainStatus } else { @() }
-                ElapsedMs                     = [int][Math]::Round($itemSw.Elapsed.TotalMilliseconds)
             }
+
+            foreach ($key in @(
+                'NegotiatedProtocol'
+                'CipherAlgorithm'
+                'CipherStrength'
+                'NegotiatedCipherSuite'
+                'HashAlgorithm'
+                'HashStrength'
+                'KeyExchangeAlgorithm'
+                'KeyExchangeStrength'
+                'IsMutuallyAuthenticated'
+                'IsEncrypted'
+                'IsSigned'
+                'NegotiatedApplicationProtocol'
+                'ForwardSecrecy'
+                'CertificateValidationPassed'
+                'CertificatePolicyErrors'
+                'CertificatePolicyErrorFlags'
+                'CertificateChainStatus'
+            )) {
+                $properties[$key] = $sessionInfo[$key]
+            }
+
+            $properties['ElapsedMs'] = [int][Math]::Round($itemSw.Elapsed.TotalMilliseconds)
+
+            [PSCustomObject]$properties
         }
     }
 

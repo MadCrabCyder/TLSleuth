@@ -12,6 +12,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-TlsTransportNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsHandshakeDetails.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsSessionInfo.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Close-NetworkResources.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-WithRetry.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\public') 'Test-TLSleuthProtocol.ps1')
@@ -86,6 +87,34 @@ Describe 'Test-TLSleuthProtocol' {
         ($result.Protocol | ForEach-Object { $_.ToString() }) | Should -Be ($script:expectedProtocols | ForEach-Object { $_.ToString() })
 
         foreach ($row in $result) {
+            $row.PSTypeNames | Should -Contain 'TLSleuth.ProtocolTestResult'
+            $row.PSObject.Properties.Name | Should -Be @(
+                'Hostname'
+                'Port'
+                'TargetHost'
+                'Transport'
+                'Protocol'
+                'ConnectionSuccessful'
+                'ErrorMessage'
+                'NegotiatedProtocol'
+                'CipherAlgorithm'
+                'CipherStrength'
+                'NegotiatedCipherSuite'
+                'HashAlgorithm'
+                'HashStrength'
+                'KeyExchangeAlgorithm'
+                'KeyExchangeStrength'
+                'IsMutuallyAuthenticated'
+                'IsEncrypted'
+                'IsSigned'
+                'NegotiatedApplicationProtocol'
+                'ForwardSecrecy'
+                'CertificateValidationPassed'
+                'CertificatePolicyErrors'
+                'CertificatePolicyErrorFlags'
+                'CertificateChainStatus'
+                'ElapsedMs'
+            )
             $row.ConnectionSuccessful | Should -BeTrue
             $row.NegotiatedProtocol | Should -Be ([System.Security.Authentication.SslProtocols]::Tls12)
             $row.ForwardSecrecy | Should -BeTrue
