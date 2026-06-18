@@ -193,6 +193,31 @@ This file lists helper functions in source/private, what they do, and their para
 | $TimeoutMs | Int32 | - |
 | $ScriptBlock | ScriptBlock | - |
 
+## New-TlsTransportNegotiationResult
+
+- Synopsis: Builds structured metadata for transport negotiation outcomes.
+- File: source/private/New-TlsTransportNegotiationResult.ps1
+- Signature: New-TlsTransportNegotiationResult([String]$Transport, [Boolean]$Negotiated = $true, [String]$SelectedProtocol, [PSObject]$Details)
+
+| Parameter | Type | Default |
+|---|---|---|
+| $Transport | String | - |
+| $Negotiated | Boolean | $true |
+| $SelectedProtocol | String | - |
+| $Details | PSObject | - |
+
+## New-TlsTransportOptionSet
+
+- Synopsis: Builds normalized shared and protocol-specific transport options.
+- File: source/private/New-TlsTransportOptionSet.ps1
+- Signature: New-TlsTransportOptionSet([String]$Transport, [Int32]$TimeoutMs = 10000, [String]$SmtpEhloName)
+
+| Parameter | Type | Default |
+|---|---|---|
+| $Transport | String | - |
+| $TimeoutMs | Int32 | 10000 |
+| $SmtpEhloName | String | - |
+
 ## New-TlsConnectionContext
 
 - Synopsis: Opens a TCP connection and prepares the shared TLSleuth connection context.
@@ -220,6 +245,19 @@ This file lists helper functions in source/private, what they do, and their para
 | $SmtpEhloName | String | - |
 | $TimeoutSec | Int32 | 10 |
 
+## Read-BinaryProtocolData
+
+- Synopsis: Reads an exact number of bytes from a binary protocol stream.
+- File: source/private/Read-BinaryProtocolData.ps1
+- Signature: Read-BinaryProtocolData([Stream]$Stream, [Int32]$Length, [Int32]$TimeoutMs = 10000, [String]$ProtocolName = 'Binary')
+
+| Parameter | Type | Default |
+|---|---|---|
+| $Stream | Stream | - |
+| $Length | Int32 | - |
+| $TimeoutMs | Int32 | 10000 |
+| $ProtocolName | String | 'Binary' |
+
 ## Read-TextProtocolLine
 
 - Synopsis: Reads one ASCII CRLF-terminated line from a text protocol stream.
@@ -243,6 +281,19 @@ This file lists helper functions in source/private, what they do, and their para
 |---|---|---|
 | $Stream | Stream | - |
 | $Command | String | - |
+
+## Send-BinaryProtocolData
+
+- Synopsis: Writes binary protocol bytes to a stream.
+- File: source/private/Send-BinaryProtocolData.ps1
+- Signature: Send-BinaryProtocolData([Stream]$Stream, [Byte[]]$Bytes, [Int32]$TimeoutMs = 10000, [String]$ProtocolName = 'Binary')
+
+| Parameter | Type | Default |
+|---|---|---|
+| $Stream | Stream | - |
+| $Bytes | Byte[] | - |
+| $TimeoutMs | Int32 | 10000 |
+| $ProtocolName | String | 'Binary' |
 
 ## Start-TlsHandshake
 

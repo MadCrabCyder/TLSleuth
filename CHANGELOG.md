@@ -1,7 +1,8 @@
 # Changelog
-## Unreleased
+## 2.3.4 (18-Jun-2026)
 - Added contract snapshot coverage for public result objects and centralized shared TLS/session result property mapping.
 - Centralized public command operation context, runtime TLS protocol discovery, and transport adapter invocation shape.
+- Prepared RDP transport support by adding internal transport negotiation results, normalized transport option sets, and binary protocol data helpers.
 - Moved release note extraction into Invoke-Build, added release checklist documentation, improved workflow dependency caching, and documented PowerShell runtime compatibility expectations.
 
 ## 2.3.3 (15-Jun-2026)

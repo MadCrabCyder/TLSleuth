@@ -5,6 +5,8 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsRuntimeProtocol.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'ConvertTo-TlsProtocolOptions.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportNegotiationResult.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportOptionSet.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsOperationContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsConnectionContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Read-TextProtocolLine.ps1')
@@ -217,5 +219,27 @@ Describe 'Get-TLSleuthCertificate transport selection' {
             $TargetHost -eq 'sni.example.test' -and
             $TimeoutMs -eq 12000
         }
+    }
+
+    It 'does not leak internal transport negotiation results into public output' {
+        Mock Invoke-SmtpStartTlsNegotiation {
+            [PSCustomObject]@{
+                GreetingCode = 220
+                EhloCode     = 250
+                StartTlsCode = 220
+            }
+        }
+
+        $result = Get-TLSleuthCertificate `
+            -Hostname 'mail.example.test' `
+            -Port 587 `
+            -TargetHost 'mail.example.test' `
+            -Transport 'SmtpStartTls' `
+            -TlsProtocols 'Tls12' `
+            -SkipCertificateValidation `
+            -TimeoutSec 10
+
+        @($result).Count | Should -Be 1
+        $result.PSTypeNames | Should -Not -Contain 'TLSleuth.TransportNegotiationResult'
     }
 }

@@ -41,10 +41,10 @@ function New-TlsOperationContext {
         $resolvedTargetHost = if ([string]::IsNullOrWhiteSpace($TargetHost)) { $Hostname } else { $TargetHost }
         $timeoutMs = $TimeoutSec * 1000
 
-        $transportOptions = [PSCustomObject]@{
-            TimeoutMs    = $timeoutMs
-            SmtpEhloName = $SmtpEhloName
-        }
+        $transportOptions = New-TlsTransportOptionSet `
+            -Transport $Transport `
+            -TimeoutMs $timeoutMs `
+            -SmtpEhloName $SmtpEhloName
 
         [PSCustomObject]@{
             Hostname         = $Hostname

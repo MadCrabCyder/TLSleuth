@@ -63,7 +63,7 @@ function Test-TLSleuthProtocol {
                     -Port $context.Port `
                     -TimeoutMs $context.TimeoutMs
 
-                Invoke-TlsTransportNegotiation `
+                $null = Invoke-TlsTransportNegotiation `
                     -Transport $context.Transport `
                     -Connection $connection `
                     -Options $context.TransportOptions

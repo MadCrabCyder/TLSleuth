@@ -8,7 +8,7 @@
 RootModule = '.\TLSleuth.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.3'
+ModuleVersion = '2.3.4'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop','Core')
@@ -113,7 +113,7 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/source/assets/TLSleuth-icon.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = '2.3.3: Added Invoke-Build CI task orchestration, PSScriptAnalyzer settings, release metadata validation, and tag-driven PowerShell Gallery publishing workflow support.'
+        ReleaseNotes = '2.3.4: Added public result contract snapshot coverage, centralized shared TLS/session result mapping, centralized command operation context and transport adapter invocation, RDP transport preparation helpers, Invoke-Build release note extraction, release checklist documentation, workflow dependency caching, and PowerShell runtime compatibility notes.'
 
     } # End of PSData hashtable
 

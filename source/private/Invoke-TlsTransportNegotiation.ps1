@@ -21,7 +21,13 @@ function Invoke-TlsTransportNegotiation {
     $fn = $MyInvocation.MyCommand.Name
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $timeoutMs = if ($Options.PSObject.Properties['TimeoutMs']) { [int]$Options.TimeoutMs } else { 10000 }
+    $timeoutMs = 10000
+    if ($Options.PSObject.Properties['Common'] -and $Options.Common.PSObject.Properties['TimeoutMs']) {
+        $timeoutMs = [int]$Options.Common.TimeoutMs
+    }
+    elseif ($Options.PSObject.Properties['TimeoutMs']) {
+        $timeoutMs = [int]$Options.TimeoutMs
+    }
     Write-Verbose "[$fn] Begin (Transport=$Transport, TimeoutMs=$timeoutMs)"
 
     if (-not $Connection.PSObject.Properties['NetworkStream'] -or $null -eq $Connection.NetworkStream) {
@@ -44,6 +50,13 @@ function Invoke-TlsTransportNegotiation {
             )
 
             Write-Verbose "[$fn] Transport $($AdapterContext.Transport) selected; no plaintext negotiation required."
+            New-TlsTransportNegotiationResult `
+                -Transport $AdapterContext.Transport `
+                -Negotiated $true `
+                -SelectedProtocol 'ImplicitTls' `
+                -Details ([ordered]@{
+                    Message = 'No plaintext negotiation required.'
+                })
         }
         SmtpStartTls = {
             param(
@@ -52,7 +65,11 @@ function Invoke-TlsTransportNegotiation {
             )
 
             $ehloName = $null
-            if ($AdapterContext.Options.PSObject.Properties['SmtpEhloName']) {
+            if ($AdapterContext.Options.PSObject.Properties['SmtpStartTls'] -and
+                $AdapterContext.Options.SmtpStartTls.PSObject.Properties['EhloName']) {
+                $ehloName = $AdapterContext.Options.SmtpStartTls.EhloName
+            }
+            elseif ($AdapterContext.Options.PSObject.Properties['SmtpEhloName']) {
                 $ehloName = $AdapterContext.Options.SmtpEhloName
             }
 
@@ -63,10 +80,16 @@ function Invoke-TlsTransportNegotiation {
                 }
             }
 
-            Invoke-SmtpStartTlsNegotiation `
+            $details = Invoke-SmtpStartTlsNegotiation `
                 -NetworkStream $AdapterContext.Connection.NetworkStream `
                 -EhloName $ehloName `
-                -TimeoutMs $AdapterContext.TimeoutMs | Out-Null
+                -TimeoutMs $AdapterContext.TimeoutMs
+
+            New-TlsTransportNegotiationResult `
+                -Transport $AdapterContext.Transport `
+                -Negotiated $true `
+                -SelectedProtocol 'STARTTLS' `
+                -Details $details
         }
         ImapStartTls = {
             param(
@@ -74,9 +97,15 @@ function Invoke-TlsTransportNegotiation {
                 [psobject]$AdapterContext
             )
 
-            Invoke-ImapStartTlsNegotiation `
+            $details = Invoke-ImapStartTlsNegotiation `
                 -NetworkStream $AdapterContext.Connection.NetworkStream `
-                -TimeoutMs $AdapterContext.TimeoutMs | Out-Null
+                -TimeoutMs $AdapterContext.TimeoutMs
+
+            New-TlsTransportNegotiationResult `
+                -Transport $AdapterContext.Transport `
+                -Negotiated $true `
+                -SelectedProtocol 'STARTTLS' `
+                -Details $details
         }
         Pop3StartTls = {
             param(
@@ -84,9 +113,15 @@ function Invoke-TlsTransportNegotiation {
                 [psobject]$AdapterContext
             )
 
-            Invoke-Pop3StartTlsNegotiation `
+            $details = Invoke-Pop3StartTlsNegotiation `
                 -NetworkStream $AdapterContext.Connection.NetworkStream `
-                -TimeoutMs $AdapterContext.TimeoutMs | Out-Null
+                -TimeoutMs $AdapterContext.TimeoutMs
+
+            New-TlsTransportNegotiationResult `
+                -Transport $AdapterContext.Transport `
+                -Negotiated $true `
+                -SelectedProtocol 'STLS' `
+                -Details $details
         }
     }
 
