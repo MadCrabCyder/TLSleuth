@@ -1,5 +1,5 @@
 # Changelog
-## Unreleased
+## 2.3.5 (19-Jun-2026)
 - Improved `Invoke-WithRetry` so configured base exception types also match derived exceptions, and expanded its standalone help examples.
 - Added Invoke-Build tasks and a gist manifest for publishing standalone helper snippets, starting with `invoke-retry`.
 - Extracted SMTP EHLO name resolution into a focused private helper with unit coverage.

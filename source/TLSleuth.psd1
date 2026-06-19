@@ -8,7 +8,7 @@
 RootModule = '.\TLSleuth.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.4'
+ModuleVersion = '2.3.5'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop','Core')
@@ -113,7 +113,7 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/source/assets/TLSleuth-icon.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = '2.3.4: Added public result contract snapshot coverage, centralized shared TLS/session result mapping, centralized command operation context and transport adapter invocation, RDP transport preparation helpers, Invoke-Build release note extraction, release checklist documentation, workflow dependency caching, and PowerShell runtime compatibility notes.'
+        ReleaseNotes = '2.3.5: Improved Invoke-WithRetry exception matching and examples, added gist publishing tasks, refactored transport negotiation helpers and dispatch, consolidated timeout and error context handling, added transport registration coverage, improved protocol test error messages, and centralized TLS resource cleanup.'
 
     } # End of PSData hashtable
 
