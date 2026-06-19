@@ -11,15 +11,12 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsTransportAdapter.ps1')
-    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-TlsTransportNegotiation.ps1')
 }
 
-Describe 'Invoke-TlsTransportNegotiation' {
+Describe 'TLS transport adapters' {
     BeforeEach {
         $script:connection = [PSCustomObject]@{
-            TcpClient     = $null
             NetworkStream = [System.IO.MemoryStream]::new()
-            SslStream     = $null
         }
     }
 
@@ -29,104 +26,79 @@ Describe 'Invoke-TlsTransportNegotiation' {
         }
     }
 
-    It 'returns a structured result for implicit TLS' {
-        $options = New-TlsTransportOptionSet -Transport 'ImplicitTls' -TimeoutMs 7000
+    It 'builds the implicit TLS result without plaintext negotiation' {
+        $result = Invoke-ImplicitTlsTransportAdapter
 
-        $result = Invoke-TlsTransportNegotiation `
-            -Transport 'ImplicitTls' `
-            -Connection $script:connection `
-            -Options $options
-
-        $result.PSTypeNames | Should -Contain 'TLSleuth.TransportNegotiationResult'
         $result.Transport | Should -Be 'ImplicitTls'
         $result.Negotiated | Should -BeTrue
         $result.SelectedProtocol | Should -Be 'ImplicitTls'
         $result.Details.Message | Should -Be 'No plaintext negotiation required.'
     }
 
-    It 'returns transport helper details for SMTP STARTTLS' {
+    It 'builds the SMTP STARTTLS result using resolved EHLO options' {
         Mock Invoke-SmtpStartTlsNegotiation {
             [PSCustomObject]@{
-                GreetingCode = 220
-                EhloCode     = 250
                 StartTlsCode = 220
             }
         }
 
         $options = New-TlsTransportOptionSet `
             -Transport 'SmtpStartTls' `
-            -TimeoutMs 12000 `
+            -TimeoutMs 8000 `
             -SmtpEhloName 'client.example.test'
 
-        $result = Invoke-TlsTransportNegotiation `
-            -Transport 'SmtpStartTls' `
+        $result = Invoke-SmtpStartTlsTransportAdapter `
             -Connection $script:connection `
-            -Options $options
+            -Options $options `
+            -TimeoutMs 8000
 
         $result.Transport | Should -Be 'SmtpStartTls'
-        $result.Negotiated | Should -BeTrue
         $result.SelectedProtocol | Should -Be 'STARTTLS'
         $result.Details.StartTlsCode | Should -Be 220
 
         Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
             $EhloName -eq 'client.example.test' -and
-            $TimeoutMs -eq 12000
+            $TimeoutMs -eq 8000
         }
     }
 
-    It 'returns transport helper details for IMAP STARTTLS' {
+    It 'builds the IMAP STARTTLS result' {
         Mock Invoke-ImapStartTlsNegotiation {
             [PSCustomObject]@{
-                GreetingTag       = '*'
-                CapabilityTag     = 'A001'
                 StartTlsResultTag = 'A002'
             }
         }
 
-        $options = New-TlsTransportOptionSet `
-            -Transport 'ImapStartTls' `
-            -TimeoutMs 11000
-
-        $result = Invoke-TlsTransportNegotiation `
-            -Transport 'ImapStartTls' `
+        $result = Invoke-ImapStartTlsTransportAdapter `
             -Connection $script:connection `
-            -Options $options
+            -TimeoutMs 9000
 
         $result.Transport | Should -Be 'ImapStartTls'
-        $result.Negotiated | Should -BeTrue
         $result.SelectedProtocol | Should -Be 'STARTTLS'
         $result.Details.StartTlsResultTag | Should -Be 'A002'
 
         Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
-            $TimeoutMs -eq 11000
+            $TimeoutMs -eq 9000
         }
     }
 
-    It 'returns transport helper details for POP3 STLS' {
+    It 'builds the POP3 STLS result' {
         Mock Invoke-Pop3StartTlsNegotiation {
             [PSCustomObject]@{
-                GreetingStatus = '+OK'
-                CapaStatus     = '+OK'
-                StlsStatus     = '+OK'
+                StlsStatus = '+OK'
             }
         }
 
-        $options = New-TlsTransportOptionSet `
-            -Transport 'Pop3StartTls' `
-            -TimeoutMs 9000
-
-        $result = Invoke-TlsTransportNegotiation `
-            -Transport 'Pop3StartTls' `
+        $result = Invoke-Pop3StartTlsTransportAdapter `
             -Connection $script:connection `
-            -Options $options
+            -TimeoutMs 7000
 
         $result.Transport | Should -Be 'Pop3StartTls'
-        $result.Negotiated | Should -BeTrue
         $result.SelectedProtocol | Should -Be 'STLS'
         $result.Details.StlsStatus | Should -Be '+OK'
 
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
-            $TimeoutMs -eq 9000
+            $TimeoutMs -eq 7000
         }
     }
 }

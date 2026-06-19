@@ -38,52 +38,29 @@ function Invoke-TlsTransportNegotiation {
         switch -Exact ($Transport) {
             'ImplicitTls' {
                 Write-Verbose "[$fn] Transport $Transport selected; no plaintext negotiation required."
-                New-TlsTransportNegotiationResult `
-                    -Transport $Transport `
-                    -Negotiated $true `
-                    -SelectedProtocol 'ImplicitTls' `
-                    -Details ([ordered]@{
-                        Message = 'No plaintext negotiation required.'
-                    })
+                Invoke-ImplicitTlsTransportAdapter -Transport $Transport
             }
 
             'SmtpStartTls' {
-                $ehloName = Resolve-SmtpEhloName -Options $Options
-
-                $details = Invoke-SmtpStartTlsNegotiation `
-                    -NetworkStream $Connection.NetworkStream `
-                    -EhloName $ehloName `
-                    -TimeoutMs $timeoutMs
-
-                New-TlsTransportNegotiationResult `
+                Invoke-SmtpStartTlsTransportAdapter `
                     -Transport $Transport `
-                    -Negotiated $true `
-                    -SelectedProtocol 'STARTTLS' `
-                    -Details $details
+                    -Connection $Connection `
+                    -Options $Options `
+                    -TimeoutMs $timeoutMs
             }
 
             'ImapStartTls' {
-                $details = Invoke-ImapStartTlsNegotiation `
-                    -NetworkStream $Connection.NetworkStream `
-                    -TimeoutMs $timeoutMs
-
-                New-TlsTransportNegotiationResult `
+                Invoke-ImapStartTlsTransportAdapter `
                     -Transport $Transport `
-                    -Negotiated $true `
-                    -SelectedProtocol 'STARTTLS' `
-                    -Details $details
+                    -Connection $Connection `
+                    -TimeoutMs $timeoutMs
             }
 
             'Pop3StartTls' {
-                $details = Invoke-Pop3StartTlsNegotiation `
-                    -NetworkStream $Connection.NetworkStream `
-                    -TimeoutMs $timeoutMs
-
-                New-TlsTransportNegotiationResult `
+                Invoke-Pop3StartTlsTransportAdapter `
                     -Transport $Transport `
-                    -Negotiated $true `
-                    -SelectedProtocol 'STLS' `
-                    -Details $details
+                    -Connection $Connection `
+                    -TimeoutMs $timeoutMs
             }
 
             default {
