@@ -34,90 +34,62 @@ function Invoke-TlsTransportNegotiation {
         throw [System.InvalidOperationException]::new('Transport negotiation requires a connection with a non-null NetworkStream.')
     }
 
-    $adapterContext = [PSCustomObject]@{
-        Connection = $Connection
-        Options    = $Options
-        TimeoutMs  = $timeoutMs
-        Transport  = $Transport
-    }
-
-    # Declarative transport adapter table keeps public orchestration logic transport-agnostic.
-    $protocolAdapters = @{
-        ImplicitTls = {
-            param(
-                [Parameter(Mandatory)]
-                [psobject]$AdapterContext
-            )
-
-            Write-Verbose "[$fn] Transport $($AdapterContext.Transport) selected; no plaintext negotiation required."
-            New-TlsTransportNegotiationResult `
-                -Transport $AdapterContext.Transport `
-                -Negotiated $true `
-                -SelectedProtocol 'ImplicitTls' `
-                -Details ([ordered]@{
-                    Message = 'No plaintext negotiation required.'
-                })
-        }
-        SmtpStartTls = {
-            param(
-                [Parameter(Mandatory)]
-                [psobject]$AdapterContext
-            )
-
-            $ehloName = Resolve-SmtpEhloName -Options $AdapterContext.Options
-
-            $details = Invoke-SmtpStartTlsNegotiation `
-                -NetworkStream $AdapterContext.Connection.NetworkStream `
-                -EhloName $ehloName `
-                -TimeoutMs $AdapterContext.TimeoutMs
-
-            New-TlsTransportNegotiationResult `
-                -Transport $AdapterContext.Transport `
-                -Negotiated $true `
-                -SelectedProtocol 'STARTTLS' `
-                -Details $details
-        }
-        ImapStartTls = {
-            param(
-                [Parameter(Mandatory)]
-                [psobject]$AdapterContext
-            )
-
-            $details = Invoke-ImapStartTlsNegotiation `
-                -NetworkStream $AdapterContext.Connection.NetworkStream `
-                -TimeoutMs $AdapterContext.TimeoutMs
-
-            New-TlsTransportNegotiationResult `
-                -Transport $AdapterContext.Transport `
-                -Negotiated $true `
-                -SelectedProtocol 'STARTTLS' `
-                -Details $details
-        }
-        Pop3StartTls = {
-            param(
-                [Parameter(Mandatory)]
-                [psobject]$AdapterContext
-            )
-
-            $details = Invoke-Pop3StartTlsNegotiation `
-                -NetworkStream $AdapterContext.Connection.NetworkStream `
-                -TimeoutMs $AdapterContext.TimeoutMs
-
-            New-TlsTransportNegotiationResult `
-                -Transport $AdapterContext.Transport `
-                -Negotiated $true `
-                -SelectedProtocol 'STLS' `
-                -Details $details
-        }
-    }
-
     try {
-        $adapter = $protocolAdapters[$Transport]
-        if ($null -eq $adapter) {
-            throw [System.InvalidOperationException]::new("No transport adapter is configured for '$Transport'.")
-        }
+        switch -Exact ($Transport) {
+            'ImplicitTls' {
+                Write-Verbose "[$fn] Transport $Transport selected; no plaintext negotiation required."
+                New-TlsTransportNegotiationResult `
+                    -Transport $Transport `
+                    -Negotiated $true `
+                    -SelectedProtocol 'ImplicitTls' `
+                    -Details ([ordered]@{
+                        Message = 'No plaintext negotiation required.'
+                    })
+            }
 
-        & $adapter -AdapterContext $adapterContext
+            'SmtpStartTls' {
+                $ehloName = Resolve-SmtpEhloName -Options $Options
+
+                $details = Invoke-SmtpStartTlsNegotiation `
+                    -NetworkStream $Connection.NetworkStream `
+                    -EhloName $ehloName `
+                    -TimeoutMs $timeoutMs
+
+                New-TlsTransportNegotiationResult `
+                    -Transport $Transport `
+                    -Negotiated $true `
+                    -SelectedProtocol 'STARTTLS' `
+                    -Details $details
+            }
+
+            'ImapStartTls' {
+                $details = Invoke-ImapStartTlsNegotiation `
+                    -NetworkStream $Connection.NetworkStream `
+                    -TimeoutMs $timeoutMs
+
+                New-TlsTransportNegotiationResult `
+                    -Transport $Transport `
+                    -Negotiated $true `
+                    -SelectedProtocol 'STARTTLS' `
+                    -Details $details
+            }
+
+            'Pop3StartTls' {
+                $details = Invoke-Pop3StartTlsNegotiation `
+                    -NetworkStream $Connection.NetworkStream `
+                    -TimeoutMs $timeoutMs
+
+                New-TlsTransportNegotiationResult `
+                    -Transport $Transport `
+                    -Negotiated $true `
+                    -SelectedProtocol 'STLS' `
+                    -Details $details
+            }
+
+            default {
+                throw [System.InvalidOperationException]::new("No transport adapter is configured for '$Transport'.")
+            }
+        }
     }
     catch {
         Write-Debug "[$fn] Transport negotiation failed (Transport=$Transport): $($_.Exception.GetType().FullName)"

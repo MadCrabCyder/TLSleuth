@@ -69,4 +69,60 @@ Describe 'Invoke-TlsTransportNegotiation' {
             $TimeoutMs -eq 12000
         }
     }
+
+    It 'returns transport helper details for IMAP STARTTLS' {
+        Mock Invoke-ImapStartTlsNegotiation {
+            [PSCustomObject]@{
+                GreetingTag       = '*'
+                CapabilityTag     = 'A001'
+                StartTlsResultTag = 'A002'
+            }
+        }
+
+        $options = New-TlsTransportOptionSet `
+            -Transport 'ImapStartTls' `
+            -TimeoutMs 11000
+
+        $result = Invoke-TlsTransportNegotiation `
+            -Transport 'ImapStartTls' `
+            -Connection $script:connection `
+            -Options $options
+
+        $result.Transport | Should -Be 'ImapStartTls'
+        $result.Negotiated | Should -BeTrue
+        $result.SelectedProtocol | Should -Be 'STARTTLS'
+        $result.Details.StartTlsResultTag | Should -Be 'A002'
+
+        Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $TimeoutMs -eq 11000
+        }
+    }
+
+    It 'returns transport helper details for POP3 STLS' {
+        Mock Invoke-Pop3StartTlsNegotiation {
+            [PSCustomObject]@{
+                GreetingStatus = '+OK'
+                CapaStatus     = '+OK'
+                StlsStatus     = '+OK'
+            }
+        }
+
+        $options = New-TlsTransportOptionSet `
+            -Transport 'Pop3StartTls' `
+            -TimeoutMs 9000
+
+        $result = Invoke-TlsTransportNegotiation `
+            -Transport 'Pop3StartTls' `
+            -Connection $script:connection `
+            -Options $options
+
+        $result.Transport | Should -Be 'Pop3StartTls'
+        $result.Negotiated | Should -BeTrue
+        $result.SelectedProtocol | Should -Be 'STLS'
+        $result.Details.StlsStatus | Should -Be '+OK'
+
+        Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $TimeoutMs -eq 9000
+        }
+    }
 }
