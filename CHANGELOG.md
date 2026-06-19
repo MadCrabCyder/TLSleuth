@@ -1,4 +1,7 @@
 # Changelog
+## Unreleased
+- Improved `Invoke-WithRetry` so configured base exception types also match derived exceptions, and expanded its standalone help examples.
+
 ## 2.3.4 (18-Jun-2026)
 - Added contract snapshot coverage for public result objects and centralized shared TLS/session result property mapping.
 - Centralized public command operation context, runtime TLS protocol discovery, and transport adapter invocation shape.
