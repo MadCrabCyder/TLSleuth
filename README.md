@@ -80,6 +80,7 @@ For a deeper explanation of how the command works and examples of how to use it,
     - [Install from PowerShell Gallery](#install-from-powershell-gallery)
     - [Update from PowerShell Gallery](#update-from-powershell-gallery)
 - [Quick Start](#quick-start)
+- [Transport Selection And Failure Messages](#transport-selection-and-failure-messages)
 - [Output Model](#output-model)
   - [Get-TLSleuthCertificate](#get-tlsleuthcertificate)
   - [Test-TLSleuthProtocol](#test-tlsleuthprotocol)
@@ -180,6 +181,52 @@ Get-TLSleuthCertificate -Hostname wrong.host.badssl.com -SkipCertificateValidati
 ```
 
 > When connecting by IP but requiring proper SNI, use `-TargetHost example.com`.
+
+------------------------------------------------------------------------
+
+# Transport Selection And Failure Messages
+
+`Hostname` is the TCP destination. `Port` is the TCP port. `Transport`
+controls any plaintext or binary negotiation that must happen before TLS
+starts. `TargetHost` controls SNI and certificate-name validation.
+
+Common examples:
+
+```powershell
+# HTTPS implicit TLS on 443. Transport can be inferred.
+Get-TLSleuthCertificate -Hostname github.com -Port 443
+
+# SMTP STARTTLS on 587. Transport can be inferred.
+Get-TLSleuthCertificate -Hostname smtp.gmail.com -Port 587
+
+# Explicit transport selection for a custom SMTP submission port.
+Get-TLSleuthCertificate -Hostname mail.example.com -Port 2525 -Transport SmtpStartTls
+
+# Connect by IP address but use a DNS name for SNI and certificate checks.
+Get-TLSleuthCertificate `
+  -Hostname 192.0.2.10 `
+  -Port 3389 `
+  -Transport RdpTls `
+  -TargetHost rdp.example.com
+
+# Compare TLS protocol support for an explicit transport.
+Test-TLSleuthProtocol -Hostname mail.example.com -Port 587 -Transport SmtpStartTls
+```
+
+Failure messages usually identify the stage that failed:
+
+- Connection refused or timed out: TCP connection failed before any transport
+  negotiation or TLS handshake.
+- STARTTLS or STLS rejected: the server responded, but did not accept the
+  requested plaintext protocol upgrade.
+- RDP negotiation rejected: the server responded before TLS, but did not accept
+  a TLS-capable RDP security negotiation. No TLS certificate is available from
+  that path.
+- TLS handshake failed: pre-TLS transport negotiation completed, but TLS failed
+  because of protocol, cipher, OS policy, or certificate-validation behavior.
+
+For RDP-specific troubleshooting, see
+[docs/rdp-troubleshooting.md](docs/rdp-troubleshooting.md).
 
 ------------------------------------------------------------------------
 

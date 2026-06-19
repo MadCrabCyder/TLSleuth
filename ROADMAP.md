@@ -67,16 +67,6 @@
   - Tests cover SSLRequest acceptance, rejection, and negotiation dispatch.
   - Documentation explains PostgreSQL-specific TLS negotiation behavior and limitations.
 
-### Improve Transport Failure Examples
-- Status: Planned
-- Category: Documentation
-- Complexity: Small
-- Goal: Help users understand common transport negotiation and TLS failure messages across supported transports.
-- Success criteria:
-  - README or docs include examples for selecting `Hostname`, `Port`, `Transport`, and `TargetHost`.
-  - Documentation describes common failure messages for connection failures, transport negotiation rejection, timeout, and TLS handshake failure.
-  - RDP-specific negotiation failures are included once `RdpTls` is released.
-
 ### Reduce Test Helper Duplication
 - Status: Planned
 - Category: Test Maintainability
@@ -244,6 +234,16 @@
   - Integration test runs only when an explicit environment variable or Invoke-Build parameter provides an RDP endpoint.
   - Test validates that `Get-TLSleuthCertificate -Transport RdpTls` reaches RDP negotiation and TLS certificate retrieval.
   - Default unit and integration test runs remain deterministic when no RDP endpoint is configured.
+
+### Improve Transport Failure Examples
+- Status: Complete (implemented in Unreleased)
+- Category: Documentation
+- Complexity: Small
+- Goal: Help users understand common transport negotiation and TLS failure messages across supported transports.
+- Success criteria:
+  - README or docs include examples for selecting `Hostname`, `Port`, `Transport`, and `TargetHost`.
+  - Documentation describes common failure messages for connection failures, transport negotiation rejection, timeout, and TLS handshake failure.
+  - RDP-specific negotiation failures are included once `RdpTls` is released.
 
 ### Invoke-Build CI Baseline
 - Status: Complete (implemented in 2.3.3)
