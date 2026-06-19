@@ -38,7 +38,21 @@ function Read-BinaryProtocolData {
             $offset = 0
 
             while ($offset -lt $Length) {
-                $read = $Stream.Read($buffer, $offset, $Length - $offset)
+                try {
+                    $read = $Stream.Read($buffer, $offset, $Length - $offset)
+                }
+                catch [System.IO.IOException] {
+                    if (Test-TlsTimeoutException -Exception $_.Exception) {
+                        throw (New-TlsTimeoutException `
+                            -Operation "$ProtocolName binary read" `
+                            -TimeoutMs $TimeoutMs `
+                            -Transport $ProtocolName `
+                            -InnerException $_.Exception)
+                    }
+
+                    throw
+                }
+
                 if ($read -le 0) {
                     throw [System.IO.EndOfStreamException]::new("$ProtocolName stream ended before $Length bytes were read.")
                 }

@@ -159,7 +159,10 @@ namespace TLSleuth
         $task = $ssl.AuthenticateAsClientAsync($TargetHost, $null, $SslProtocols, $false)
 
         if (-not $task.Wait($TimeoutMs)) {
-            throw [System.TimeoutException]::new("TLS handshake timeout after ${TimeoutMs}ms for $TargetHost")
+            throw (New-TlsTimeoutException `
+                -Operation 'TLS handshake' `
+                -TimeoutMs $TimeoutMs `
+                -TargetHost $TargetHost)
         }
 
         Write-Verbose "[$fn] Handshake succeeded (Protocol=$($ssl.SslProtocol), Cipher=$($ssl.CipherAlgorithm), Strength=$($ssl.CipherStrength))."

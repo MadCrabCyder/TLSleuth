@@ -32,7 +32,11 @@ function Connect-TcpWithTimeout {
 
         $task = $tcp.ConnectAsync($Hostname, $Port)
         if (-not $task.Wait($TimeoutMs)) {
-            throw [System.TimeoutException]::new("Connection timeout after ${TimeoutMs}ms to $($Hostname):$($Port)")
+            throw (New-TlsTimeoutException `
+                -Operation 'TCP connection' `
+                -TimeoutMs $TimeoutMs `
+                -Hostname $Hostname `
+                -Port $Port)
         }
 
         $netStream = $tcp.GetStream()

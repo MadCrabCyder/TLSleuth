@@ -30,8 +30,21 @@ function Send-BinaryProtocolData {
         }
 
         Invoke-WithStreamTimeout -Stream $Stream -TimeoutMs $TimeoutMs -ScriptBlock {
-            $Stream.Write($Bytes, 0, $Bytes.Length)
-            $Stream.Flush()
+            try {
+                $Stream.Write($Bytes, 0, $Bytes.Length)
+                $Stream.Flush()
+            }
+            catch [System.IO.IOException] {
+                if (Test-TlsTimeoutException -Exception $_.Exception) {
+                    throw (New-TlsTimeoutException `
+                        -Operation "$ProtocolName binary write" `
+                        -TimeoutMs $TimeoutMs `
+                        -Transport $ProtocolName `
+                        -InnerException $_.Exception)
+                }
+
+                throw
+            }
         }
     }
     finally {

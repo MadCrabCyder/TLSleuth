@@ -21,13 +21,7 @@ function Invoke-TlsTransportNegotiation {
     $fn = $MyInvocation.MyCommand.Name
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $timeoutMs = 10000
-    if ($Options.PSObject.Properties['Common'] -and $Options.Common.PSObject.Properties['TimeoutMs']) {
-        $timeoutMs = [int]$Options.Common.TimeoutMs
-    }
-    elseif ($Options.PSObject.Properties['TimeoutMs']) {
-        $timeoutMs = [int]$Options.TimeoutMs
-    }
+    $timeoutMs = Resolve-TlsTimeoutMs -Options $Options
     Write-Verbose "[$fn] Begin (Transport=$Transport, TimeoutMs=$timeoutMs)"
 
     if (-not $Connection.PSObject.Properties['NetworkStream'] -or $null -eq $Connection.NetworkStream) {
