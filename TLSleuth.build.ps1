@@ -1,7 +1,13 @@
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSReviewUnusedParameter',
+    '',
+    Justification = 'Invoke-Build task blocks and helper functions consume script parameters dynamically.'
+)]
 param(
     [switch] $IncludeIntegrationTests,
     [string] $ReleaseVersion,
-    [string] $ReleaseNotesPath = (Join-Path $PSScriptRoot 'release-notes.md')
+    [string] $ReleaseNotesPath = (Join-Path $PSScriptRoot 'release-notes.md'),
+    [string[]] $GistName = @()
 )
 
 $ProjectRoot = $PSScriptRoot
@@ -14,6 +20,7 @@ $BuiltModuleRoot = Join-Path $OutputRoot 'TLSleuth'
 $AnalyzerSettings = Join-Path $ProjectRoot 'PSScriptAnalyzerSettings.psd1'
 $SourceManifestPath = Join-Path $SourceRoot 'TLSleuth.psd1'
 $ChangelogPath = Join-Path $ProjectRoot 'CHANGELOG.md'
+$GistManifestPath = Join-Path (Join-Path $ProjectRoot 'gists') 'gists.psd1'
 
 function Assert-ModuleAvailable {
     param(
@@ -101,6 +108,101 @@ function Get-ReleaseMetadata {
     }
 }
 
+function Resolve-ProjectPath {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    Join-Path $ProjectRoot $Path
+}
+
+function Get-ConfiguredGist {
+    if (-not (Test-Path -LiteralPath $GistManifestPath)) {
+        throw "Gist manifest '$GistManifestPath' was not found."
+    }
+
+    $manifest = Import-PowerShellDataFile -LiteralPath $GistManifestPath
+    if (-not $manifest -or $manifest.Count -eq 0) {
+        throw "Gist manifest '$GistManifestPath' does not contain any gist definitions."
+    }
+
+    foreach ($entry in ($manifest.GetEnumerator() | Sort-Object -Property Name)) {
+        $definition = $entry.Value
+        [PSCustomObject]@{
+            Name               = [string]$entry.Key
+            Description        = [string]$definition.Description
+            RelativeSourcePath = [string]$definition.SourcePath
+            SourcePath         = Resolve-ProjectPath -Path ([string]$definition.SourcePath)
+            Public             = [bool]$definition.Public
+            GistId             = [string]$definition.GistId
+        }
+    }
+}
+
+function Get-SelectedGist {
+    $configuredGists = @(Get-ConfiguredGist)
+    if (-not $GistName -or $GistName.Count -eq 0) {
+        return $configuredGists
+    }
+
+    $selectedGists = foreach ($name in $GistName) {
+        $match = @($configuredGists | Where-Object { $_.Name -eq $name })
+        if ($match.Count -eq 0) {
+            $knownNames = ($configuredGists.Name | Sort-Object) -join ', '
+            throw "Gist '$name' was not found in '$GistManifestPath'. Known gists: $knownNames"
+        }
+
+        $match
+    }
+
+    $selectedGists
+}
+
+function Assert-GistDefinition {
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject[]] $Gist
+    )
+
+    foreach ($gistDefinition in $Gist) {
+        if ([string]::IsNullOrWhiteSpace($gistDefinition.Name)) {
+            throw "A gist definition in '$GistManifestPath' is missing its name."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($gistDefinition.Description)) {
+            throw "Gist '$($gistDefinition.Name)' is missing Description."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($gistDefinition.RelativeSourcePath)) {
+            throw "Gist '$($gistDefinition.Name)' is missing SourcePath."
+        }
+
+        if (-not (Test-Path -LiteralPath $gistDefinition.SourcePath -PathType Leaf)) {
+            throw "Gist '$($gistDefinition.Name)' source file '$($gistDefinition.SourcePath)' was not found."
+        }
+    }
+}
+
+function Invoke-GitHubCli {
+    param(
+        [Parameter(Mandatory)]
+        [string[]] $ArgumentList
+    )
+
+    $output = & gh @ArgumentList 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $output | ForEach-Object { "$_" }
+        throw "GitHub CLI command failed: gh $($ArgumentList -join ' ')"
+    }
+
+    $output
+}
+
 task . Validate
 
 task Init {
@@ -142,6 +244,57 @@ task WriteReleaseNotes ValidateReleaseMetadata, {
     $metadata = Get-ReleaseMetadata
     Set-Content -LiteralPath $ReleaseNotesPath -Value $metadata.ChangelogReleaseNotes
     "Wrote release notes for version $($metadata.Version) to $ReleaseNotesPath."
+}
+
+task ListGists {
+    $gists = @(Get-SelectedGist)
+    Assert-GistDefinition -Gist $gists
+
+    foreach ($gistDefinition in $gists) {
+        $visibility = if ($gistDefinition.Public) { 'public' } else { 'secret' }
+        $mode = if ([string]::IsNullOrWhiteSpace($gistDefinition.GistId)) { 'create' } else { 'update' }
+        "$($gistDefinition.Name): $($gistDefinition.RelativeSourcePath) ($visibility, $mode)"
+    }
+}
+
+task ValidateGists {
+    $gists = @(Get-SelectedGist)
+    Assert-GistDefinition -Gist $gists
+    "Validated $($gists.Count) configured gist(s)."
+}
+
+task PublishGists ValidateGists, {
+    Assert-CommandAvailable -Name 'gh' -InstallCommand 'Install GitHub CLI from https://cli.github.com/ and run gh auth login'
+    $null = Invoke-GitHubCli -ArgumentList @('auth', 'status')
+
+    foreach ($gistDefinition in @(Get-SelectedGist)) {
+        if ([string]::IsNullOrWhiteSpace($gistDefinition.GistId)) {
+            "Creating gist '$($gistDefinition.Name)' from $($gistDefinition.RelativeSourcePath)."
+            $createArgumentList = @(
+                'gist',
+                'create',
+                $gistDefinition.SourcePath,
+                '--desc',
+                $gistDefinition.Description
+            )
+            if ($gistDefinition.Public) {
+                $createArgumentList += '--public'
+            }
+
+            $createOutput = Invoke-GitHubCli -ArgumentList $createArgumentList
+            $createOutput | ForEach-Object { "$_" }
+            "Add the returned gist ID or URL to '$GistManifestPath' as GistId to update this gist in future runs."
+        }
+        else {
+            "Updating gist '$($gistDefinition.Name)' ($($gistDefinition.GistId)) from $($gistDefinition.RelativeSourcePath)."
+            Invoke-GitHubCli -ArgumentList @(
+                'gist',
+                'edit',
+                $gistDefinition.GistId,
+                $gistDefinition.SourcePath
+            ) | ForEach-Object { "$_" }
+        }
+    }
 }
 
 task Test Init, UnitTest

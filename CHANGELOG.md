@@ -1,6 +1,10 @@
 # Changelog
 ## Unreleased
 - Improved `Invoke-WithRetry` so configured base exception types also match derived exceptions, and expanded its standalone help examples.
+- Added Invoke-Build tasks and a gist manifest for publishing standalone helper snippets, starting with `invoke-retry`.
+- Extracted SMTP EHLO name resolution into a focused private helper with unit coverage.
+- Simplified TLS transport dispatch by replacing the per-call adapter hashtable with explicit `switch -Exact` routing.
+- Extracted per-transport negotiation adapter helpers for implicit TLS, SMTP STARTTLS, IMAP STARTTLS, and POP3 STLS.
 
 ## 2.3.4 (18-Jun-2026)
 - Added contract snapshot coverage for public result objects and centralized shared TLS/session result property mapping.

@@ -16,6 +16,7 @@ TLSleuth follows a **source-first modular design**:
 TLSleuth/
 ├── docs/
 ├── examples/
+├── gists/
 ├── output/
 └── source/
     ├── private/
@@ -73,12 +74,54 @@ Invoke-Build Clean                   # Remove generated output
 Invoke-Build Validate                # Analyze, test, and build
 Invoke-Build ValidateReleaseMetadata # Check manifest version has changelog notes
 Invoke-Build WriteReleaseNotes       # Write release-notes.md from CHANGELOG.md
+Invoke-Build ListGists               # List configured gist snippets
+Invoke-Build ValidateGists           # Validate configured gist snippets
+Invoke-Build PublishGists            # Create or update configured GitHub gists
 Invoke-Build PublishBuilt            # Publish built output to PowerShell Gallery
 ```
 
 `.\build.ps1` remains available as a wrapper for the `Build` task.
 
 Analyzer exclusions live in `PSScriptAnalyzerSettings.psd1`.
+
+## Gist Publishing
+
+Reusable standalone snippets are listed in `gists/gists.psd1`. Each entry points
+at a source file in the repository and includes its gist description,
+visibility, and optional `GistId`.
+
+The initial configured gist is `invoke-retry`, which publishes
+`source/private/Invoke-WithRetry.ps1`.
+
+List configured gists:
+
+```powershell
+Invoke-Build ListGists
+```
+
+Validate the gist list without contacting GitHub:
+
+```powershell
+Invoke-Build ValidateGists
+```
+
+Create or update all configured gists:
+
+```powershell
+Invoke-Build PublishGists
+```
+
+Create or update one configured gist:
+
+```powershell
+Invoke-Build PublishGists -GistName invoke-retry
+```
+
+`PublishGists` requires the GitHub CLI (`gh`) and an authenticated session from
+`gh auth login`. When `GistId` is blank, the task creates a new gist using the
+configured visibility. Secret gists use the GitHub CLI default behavior; public
+gists pass `--public`. Add the returned gist ID or URL to `gists/gists.psd1` so
+future runs update the existing gist.
 
 ## Release And Compatibility
 
