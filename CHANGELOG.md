@@ -7,6 +7,7 @@
 - Extracted per-transport negotiation adapter helpers for implicit TLS, SMTP STARTTLS, IMAP STARTTLS, and POP3 STLS.
 - Consolidated timeout resolution and timeout exception handling across TCP connection, binary protocol IO, transport negotiation, and TLS handshake paths.
 - Added structured error context metadata for connection, transport negotiation, TLS handshake, binary protocol, and certificate extraction failures.
+- Added transport registration coverage to verify transport `ValidateSet` declarations and dispatcher branches stay aligned.
 
 ## 2.3.4 (18-Jun-2026)
 - Added contract snapshot coverage for public result objects and centralized shared TLS/session result property mapping.
