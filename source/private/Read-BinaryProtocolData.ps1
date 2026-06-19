@@ -30,7 +30,13 @@ function Read-BinaryProtocolData {
 
     try {
         if (-not $Stream.CanRead) {
-            throw [System.InvalidOperationException]::new("$ProtocolName binary read requires a readable stream.")
+            $exception = [System.InvalidOperationException]::new("$ProtocolName binary read requires a readable stream.")
+            $null = Add-TlsErrorContext `
+                -Exception $exception `
+                -Stage 'BinaryProtocol' `
+                -Operation "$ProtocolName binary read" `
+                -Transport $ProtocolName
+            throw $exception
         }
 
         $result = Invoke-WithStreamTimeout -Stream $Stream -TimeoutMs $TimeoutMs -ScriptBlock {
@@ -43,18 +49,35 @@ function Read-BinaryProtocolData {
                 }
                 catch [System.IO.IOException] {
                     if (Test-TlsTimeoutException -Exception $_.Exception) {
-                        throw (New-TlsTimeoutException `
+                        $timeoutException = New-TlsTimeoutException `
                             -Operation "$ProtocolName binary read" `
                             -TimeoutMs $TimeoutMs `
                             -Transport $ProtocolName `
-                            -InnerException $_.Exception)
+                            -InnerException $_.Exception
+                        $null = Add-TlsErrorContext `
+                            -Exception $timeoutException `
+                            -Stage 'BinaryProtocol' `
+                            -Operation "$ProtocolName binary read" `
+                            -Transport $ProtocolName
+                        throw $timeoutException
                     }
 
+                    $null = Add-TlsErrorContext `
+                        -Exception $_.Exception `
+                        -Stage 'BinaryProtocol' `
+                        -Operation "$ProtocolName binary read" `
+                        -Transport $ProtocolName
                     throw
                 }
 
                 if ($read -le 0) {
-                    throw [System.IO.EndOfStreamException]::new("$ProtocolName stream ended before $Length bytes were read.")
+                    $exception = [System.IO.EndOfStreamException]::new("$ProtocolName stream ended before $Length bytes were read.")
+                    $null = Add-TlsErrorContext `
+                        -Exception $exception `
+                        -Stage 'BinaryProtocol' `
+                        -Operation "$ProtocolName binary read" `
+                        -Transport $ProtocolName
+                    throw $exception
                 }
 
                 $offset += $read

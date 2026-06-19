@@ -26,7 +26,13 @@ function Send-BinaryProtocolData {
 
     try {
         if (-not $Stream.CanWrite) {
-            throw [System.InvalidOperationException]::new("$ProtocolName binary write requires a writable stream.")
+            $exception = [System.InvalidOperationException]::new("$ProtocolName binary write requires a writable stream.")
+            $null = Add-TlsErrorContext `
+                -Exception $exception `
+                -Stage 'BinaryProtocol' `
+                -Operation "$ProtocolName binary write" `
+                -Transport $ProtocolName
+            throw $exception
         }
 
         Invoke-WithStreamTimeout -Stream $Stream -TimeoutMs $TimeoutMs -ScriptBlock {
@@ -36,13 +42,24 @@ function Send-BinaryProtocolData {
             }
             catch [System.IO.IOException] {
                 if (Test-TlsTimeoutException -Exception $_.Exception) {
-                    throw (New-TlsTimeoutException `
+                    $timeoutException = New-TlsTimeoutException `
                         -Operation "$ProtocolName binary write" `
                         -TimeoutMs $TimeoutMs `
                         -Transport $ProtocolName `
-                        -InnerException $_.Exception)
+                        -InnerException $_.Exception
+                    $null = Add-TlsErrorContext `
+                        -Exception $timeoutException `
+                        -Stage 'BinaryProtocol' `
+                        -Operation "$ProtocolName binary write" `
+                        -Transport $ProtocolName
+                    throw $timeoutException
                 }
 
+                $null = Add-TlsErrorContext `
+                    -Exception $_.Exception `
+                    -Stage 'BinaryProtocol' `
+                    -Operation "$ProtocolName binary write" `
+                    -Transport $ProtocolName
                 throw
             }
         }

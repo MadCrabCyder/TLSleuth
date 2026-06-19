@@ -25,7 +25,13 @@ function Invoke-TlsTransportNegotiation {
     Write-Verbose "[$fn] Begin (Transport=$Transport, TimeoutMs=$timeoutMs)"
 
     if (-not $Connection.PSObject.Properties['NetworkStream'] -or $null -eq $Connection.NetworkStream) {
-        throw [System.InvalidOperationException]::new('Transport negotiation requires a connection with a non-null NetworkStream.')
+        $exception = [System.InvalidOperationException]::new('Transport negotiation requires a connection with a non-null NetworkStream.')
+        $null = Add-TlsErrorContext `
+            -Exception $exception `
+            -Stage 'TransportNegotiation' `
+            -Operation "$Transport transport negotiation" `
+            -Transport $Transport
+        throw $exception
     }
 
     try {
@@ -63,6 +69,11 @@ function Invoke-TlsTransportNegotiation {
         }
     }
     catch {
+        $null = Add-TlsErrorContext `
+            -Exception $_.Exception `
+            -Stage 'TransportNegotiation' `
+            -Operation "$Transport transport negotiation" `
+            -Transport $Transport
         Write-Debug "[$fn] Transport negotiation failed (Transport=$Transport): $($_.Exception.GetType().FullName)"
         throw
     }

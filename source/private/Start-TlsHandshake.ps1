@@ -37,7 +37,13 @@ function Start-TlsHandshake {
         $networkStream = $Connection.NetworkStream
     }
     if ($null -eq $networkStream) {
-        throw [System.InvalidOperationException]::new('Connection context must include a non-null NetworkStream.')
+        $exception = [System.InvalidOperationException]::new('Connection context must include a non-null NetworkStream.')
+        $null = Add-TlsErrorContext `
+            -Exception $exception `
+            -Stage 'TlsHandshake' `
+            -Operation 'TLS handshake' `
+            -TargetHost $TargetHost
+        throw $exception
     }
 
     if (-not ('TLSleuth.CertificateValidationCallbacksV2' -as [type])) {
@@ -182,9 +188,22 @@ namespace TLSleuth
         }
 
         $errorToThrow = $_.Exception
+        $throwOriginal = $true
         if ($errorToThrow -is [System.AggregateException] -and $errorToThrow.InnerException) {
-            throw $errorToThrow.InnerException
+            $errorToThrow = $errorToThrow.InnerException
+            $throwOriginal = $false
         }
+
+        $null = Add-TlsErrorContext `
+            -Exception $errorToThrow `
+            -Stage 'TlsHandshake' `
+            -Operation 'TLS handshake' `
+            -TargetHost $TargetHost
+
+        if (-not $throwOriginal) {
+            throw $errorToThrow
+        }
+
         throw
     }
     finally {

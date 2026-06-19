@@ -52,9 +52,23 @@ function Connect-TcpWithTimeout {
         }
 
         $errorToThrow = $_.Exception
+        $throwOriginal = $true
         if ($errorToThrow -is [System.AggregateException] -and $errorToThrow.InnerException) {
-            throw $errorToThrow.InnerException
+            $errorToThrow = $errorToThrow.InnerException
+            $throwOriginal = $false
         }
+
+        $null = Add-TlsErrorContext `
+            -Exception $errorToThrow `
+            -Stage 'Connection' `
+            -Operation 'TCP connection' `
+            -Hostname $Hostname `
+            -Port $Port
+
+        if (-not $throwOriginal) {
+            throw $errorToThrow
+        }
+
         throw
     }
     finally {
