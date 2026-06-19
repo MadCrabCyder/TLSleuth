@@ -64,21 +64,7 @@ function Invoke-TlsTransportNegotiation {
                 [psobject]$AdapterContext
             )
 
-            $ehloName = $null
-            if ($AdapterContext.Options.PSObject.Properties['SmtpStartTls'] -and
-                $AdapterContext.Options.SmtpStartTls.PSObject.Properties['EhloName']) {
-                $ehloName = $AdapterContext.Options.SmtpStartTls.EhloName
-            }
-            elseif ($AdapterContext.Options.PSObject.Properties['SmtpEhloName']) {
-                $ehloName = $AdapterContext.Options.SmtpEhloName
-            }
-
-            if ([string]::IsNullOrWhiteSpace($ehloName)) {
-                $ehloName = [System.Net.Dns]::GetHostName()
-                if ([string]::IsNullOrWhiteSpace($ehloName)) {
-                    $ehloName = 'localhost'
-                }
-            }
+            $ehloName = Resolve-SmtpEhloName -Options $AdapterContext.Options
 
             $details = Invoke-SmtpStartTlsNegotiation `
                 -NetworkStream $AdapterContext.Connection.NetworkStream `
