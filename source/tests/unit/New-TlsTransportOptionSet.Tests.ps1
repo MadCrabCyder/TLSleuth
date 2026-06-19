@@ -27,4 +27,14 @@ Describe 'New-TlsTransportOptionSet' {
         $options.Common.TimeoutMs | Should -Be 7000
         $options.SmtpStartTls.EhloName | Should -BeNullOrEmpty
     }
+
+    It 'sets default RDP TLS security protocols for RDP transport' {
+        $options = New-TlsTransportOptionSet `
+            -Transport 'RdpTls' `
+            -TimeoutMs 9000
+
+        $options.Transport | Should -Be 'RdpTls'
+        $options.Common.TimeoutMs | Should -Be 9000
+        $options.Rdp.RequestedSecurityProtocol | Should -Be @('Ssl','Hybrid','HybridEx')
+    }
 }

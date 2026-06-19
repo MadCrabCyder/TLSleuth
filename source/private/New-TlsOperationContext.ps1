@@ -22,7 +22,7 @@ function New-TlsOperationContext {
         [string]$TargetHost,
 
         [Parameter(Mandatory)]
-        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls')]
+        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls','RdpTls')]
         [string]$Transport,
 
         [AllowNull()]

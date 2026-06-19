@@ -18,12 +18,14 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsNegotiation.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-TlsTimeoutMs.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-SmtpEhloName.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImplicitTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsTransportAdapter.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-TlsTransportNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsHandshakeDetails.ps1')
@@ -58,6 +60,15 @@ Describe 'Test-TLSleuthProtocol' {
 
         Mock Invoke-Pop3StartTlsNegotiation {
             [PSCustomObject]@{ StlsStatus = '+OK' }
+        }
+
+        Mock Invoke-RdpTlsNegotiation {
+            [PSCustomObject]@{
+                Type                 = 'Response'
+                TpktLength           = 19
+                SelectedProtocolMask = [uint32]2
+                SelectedProtocol     = 'Hybrid'
+            }
         }
 
         Mock Start-TlsHandshake {

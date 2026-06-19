@@ -21,7 +21,7 @@ engineers, and automation pipelines that need reliable TLS insight.
 
 - **Certificate + handshake inspection** -- `Get-TLSleuthCertificate` returns certificate metadata, validation results, and negotiated TLS/session details.
 - **Protocol compatibility testing** -- `Test-TLSleuthProtocol` tests runtime-available explicit protocol versions and returns per-protocol outcomes.
-- **Transport-aware negotiation** -- Supports `ImplicitTls`, `SmtpStartTls`, `ImapStartTls`, and `Pop3StartTls`.
+- **Transport-aware negotiation** -- Supports `ImplicitTls`, `SmtpStartTls`, `ImapStartTls`, `Pop3StartTls`, and `RdpTls`.
 - **SNI-aware** -- Automatically uses SNI from `-Hostname` with optional `-TargetHost` override.
 - **Structured output** -- Stable, script-friendly object contracts (`TLSleuth.CertificateResult` and `TLSleuth.ProtocolTestResult`).
 - **Pipeline support** -- Designed for batch processing across multiple hosts.
@@ -37,6 +37,7 @@ engineers, and automation pipelines that need reliable TLS insight.
 - New transport option: `SmtpStartTls`
 - New transport option: `ImapStartTls`
 - New transport option: `Pop3StartTls`
+- New transport option: `RdpTls`
 
 You can now retrieve certificates from SMTP, IMAP, and POP3 servers using `STARTTLS`/`STLS` negotiation, rather than assuming implicit TLS (e.g., SMTPS on port 465, IMAPS on port 993, or POP3S on port 995).
 
@@ -44,7 +45,8 @@ This allows TLSleuth to:
 - Connect to SMTP services on port 25 or 587
 - Connect to IMAP services on port 143
 - Connect to POP3 services on port 110
-- Issue the STARTTLS/STLS command
+- Connect to RDP services on port 3389
+- Issue the appropriate pre-TLS negotiation command or request
 - Upgrade the connection to TLS
 - Retrieve certificate and negotiated TLS details
 
@@ -146,6 +148,9 @@ Get-TLSleuthCertificate -Hostname outlook.office365.com -Port 143 -Transport Ima
 
 # New in V2.1.0 - Retrieve certificate from POP3 server
 Get-TLSleuthCertificate -Hostname pop.gmail.com -Port 110 -Transport Pop3StartTls
+
+# Unreleased - Retrieve certificate from RDP server
+Get-TLSleuthCertificate -Hostname rdp.example.com -Port 3389 -Transport RdpTls
 
 # New in V2.3.0 - Test protocol support on an HTTPS endpoint
 Test-TLSleuthProtocol -Hostname github.com |

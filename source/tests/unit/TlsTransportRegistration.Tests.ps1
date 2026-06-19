@@ -2,7 +2,7 @@ BeforeAll {
     $scriptRoot = $PSScriptRoot
     if (-not $scriptRoot) { $scriptRoot = Split-Path -Parent $PSCommandPath }
     $script:sourceRoot = Join-Path $scriptRoot '..\..'
-    $script:transportNames = @('ImplicitTls', 'SmtpStartTls', 'ImapStartTls', 'Pop3StartTls')
+    $script:transportNames = @('ImplicitTls', 'SmtpStartTls', 'ImapStartTls', 'Pop3StartTls', 'RdpTls')
 
     function Get-ValidateSetValue {
         param(

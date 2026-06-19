@@ -6,7 +6,7 @@ function Invoke-TlsTransportNegotiation {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls')]
+        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls','RdpTls')]
         [string]$Transport,
 
         [Parameter(Mandatory)]
@@ -60,6 +60,14 @@ function Invoke-TlsTransportNegotiation {
                 Invoke-Pop3StartTlsTransportAdapter `
                     -Transport $Transport `
                     -Connection $Connection `
+                    -TimeoutMs $timeoutMs
+            }
+
+            'RdpTls' {
+                Invoke-RdpTlsTransportAdapter `
+                    -Transport $Transport `
+                    -Connection $Connection `
+                    -Options $Options `
                     -TimeoutMs $timeoutMs
             }
 

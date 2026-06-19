@@ -38,4 +38,16 @@ Describe 'New-TlsOperationContext' {
         $context.TransportOptions.Common.TimeoutMs | Should -Be 12000
         $context.TransportOptions.SmtpStartTls.EhloName | Should -Be 'client.example.test'
     }
+
+    It 'builds RDP transport options' {
+        $context = New-TlsOperationContext `
+            -Hostname 'rdp.example.test' `
+            -Port 3389 `
+            -Transport 'RdpTls' `
+            -TimeoutSec 9
+
+        $context.Transport | Should -Be 'RdpTls'
+        $context.Port | Should -Be 3389
+        $context.TransportOptions.Rdp.RequestedSecurityProtocol | Should -Be @('Ssl','Hybrid','HybridEx')
+    }
 }

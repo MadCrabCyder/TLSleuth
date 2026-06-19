@@ -18,7 +18,7 @@ function Test-TLSleuthProtocol {
         [string]$TargetHost,
 
         [Parameter(ValueFromPipelineByPropertyName)]
-        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls')]
+        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls','RdpTls')]
         [string]$Transport = 'ImplicitTls',
 
         [Parameter(ValueFromPipelineByPropertyName)]

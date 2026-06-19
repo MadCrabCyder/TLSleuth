@@ -10,7 +10,7 @@ function New-TlsTransportOptionSet {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls')]
+        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls','RdpTls')]
         [string]$Transport,
 
         [ValidateRange(1000,600000)]
@@ -36,7 +36,7 @@ function New-TlsTransportOptionSet {
                 EhloName = $SmtpEhloName
             }
             Rdp          = [PSCustomObject]@{
-                RequestedSecurityProtocol = $null
+                RequestedSecurityProtocol = if ($Transport -eq 'RdpTls') { @('Ssl','Hybrid','HybridEx') } else { $null }
             }
         }
     }

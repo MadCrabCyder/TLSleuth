@@ -1,4 +1,7 @@
 # Changelog
+## Unreleased
+- Added `RdpTls` transport support for retrieving certificates from RDP servers after RDP security negotiation.
+
 ## 2.3.5 (19-Jun-2026)
 - Improved `Invoke-WithRetry` so configured base exception types also match derived exceptions, and expanded its standalone help examples.
 - Added Invoke-Build tasks and a gist manifest for publishing standalone helper snippets, starting with `invoke-retry`.

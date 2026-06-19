@@ -7,10 +7,12 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsNegotiation.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImplicitTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsTransportAdapter.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsTransportAdapter.ps1')
 }
 
 Describe 'TLS transport adapters' {
@@ -99,6 +101,35 @@ Describe 'TLS transport adapters' {
 
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
             $TimeoutMs -eq 7000
+        }
+    }
+
+    It 'builds the RDP TLS result' {
+        Mock Invoke-RdpTlsNegotiation {
+            [PSCustomObject]@{
+                Type                 = 'Response'
+                TpktLength           = 19
+                SelectedProtocolMask = [uint32]2
+                SelectedProtocol     = 'Hybrid'
+            }
+        }
+
+        $options = New-TlsTransportOptionSet `
+            -Transport 'RdpTls' `
+            -TimeoutMs 6000
+
+        $result = Invoke-RdpTlsTransportAdapter `
+            -Connection $script:connection `
+            -Options $options `
+            -TimeoutMs 6000
+
+        $result.Transport | Should -Be 'RdpTls'
+        $result.SelectedProtocol | Should -Be 'Hybrid'
+        $result.Details.SelectedProtocolMask | Should -Be 2
+
+        Assert-MockCalled Invoke-RdpTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $TimeoutMs -eq 6000 -and
+            (@($RequestedSecurityProtocol) -join ',') -eq 'Ssl,Hybrid,HybridEx'
         }
     }
 }

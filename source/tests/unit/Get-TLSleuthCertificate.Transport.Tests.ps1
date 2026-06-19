@@ -19,12 +19,14 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsNegotiation.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-TlsTimeoutMs.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-SmtpEhloName.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImplicitTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsTransportAdapter.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-TlsTransportNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Start-TlsHandshake.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsHandshakeDetails.ps1')
@@ -70,6 +72,15 @@ Describe 'Get-TLSleuthCertificate transport selection' {
 
         Mock Invoke-Pop3StartTlsNegotiation {
             [PSCustomObject]@{ StlsStatus = '+OK' }
+        }
+
+        Mock Invoke-RdpTlsNegotiation {
+            [PSCustomObject]@{
+                Type                 = 'Response'
+                TpktLength           = 19
+                SelectedProtocolMask = [uint32]1
+                SelectedProtocol     = 'Ssl'
+            }
         }
 
         Mock Start-TlsHandshake {
@@ -166,6 +177,25 @@ Describe 'Get-TLSleuthCertificate transport selection' {
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 1 -Scope It
         Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
+    }
+
+    It 'calls RDP TLS negotiation for RdpTls transport' {
+        $result = Get-TLSleuthCertificate `
+            -Hostname 'rdp.example.test' `
+            -Port 3389 `
+            -TargetHost 'rdp.example.test' `
+            -Transport 'RdpTls' `
+            -TlsProtocols 'Tls12' `
+            -SkipCertificateValidation `
+            -TimeoutSec 10
+
+        $result | Should -Not -BeNullOrEmpty
+        Assert-MockCalled Invoke-RdpTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $TimeoutMs -eq 10000
+        }
+        Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
     }
 
     It 'does not call SMTP STARTTLS negotiation for ImplicitTls transport' {

@@ -10,7 +10,7 @@ function New-TlsTransportNegotiationResult {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls')]
+        [ValidateSet('ImplicitTls','SmtpStartTls','ImapStartTls','Pop3StartTls','RdpTls')]
         [string]$Transport,
 
         [bool]$Negotiated = $true,

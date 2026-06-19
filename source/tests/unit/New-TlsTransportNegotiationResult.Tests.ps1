@@ -39,4 +39,13 @@ Describe 'New-TlsTransportNegotiationResult' {
         ($null -eq $result.Details) | Should -BeFalse
         @($result.Details.PSObject.Properties).Count | Should -Be 0
     }
+
+    It 'accepts RDP TLS transport results' {
+        $result = New-TlsTransportNegotiationResult `
+            -Transport 'RdpTls' `
+            -SelectedProtocol 'Hybrid'
+
+        $result.Transport | Should -Be 'RdpTls'
+        $result.SelectedProtocol | Should -Be 'Hybrid'
+    }
 }

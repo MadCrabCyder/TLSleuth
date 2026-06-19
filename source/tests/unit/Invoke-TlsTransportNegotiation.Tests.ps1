@@ -9,10 +9,12 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsNegotiation.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsNegotiation.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImplicitTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-SmtpStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-ImapStartTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-Pop3StartTlsTransportAdapter.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-RdpTlsTransportAdapter.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Invoke-TlsTransportNegotiation.ps1')
 }
 
@@ -129,6 +131,35 @@ Describe 'Invoke-TlsTransportNegotiation' {
 
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 1 -Scope It -ParameterFilter {
             $TimeoutMs -eq 9000
+        }
+    }
+
+    It 'returns transport helper details for RDP TLS' {
+        Mock Invoke-RdpTlsNegotiation {
+            [PSCustomObject]@{
+                Type                 = 'Response'
+                TpktLength           = 19
+                SelectedProtocolMask = [uint32]1
+                SelectedProtocol     = 'Ssl'
+            }
+        }
+
+        $options = New-TlsTransportOptionSet `
+            -Transport 'RdpTls' `
+            -TimeoutMs 8000
+
+        $result = Invoke-TlsTransportNegotiation `
+            -Transport 'RdpTls' `
+            -Connection $script:connection `
+            -Options $options
+
+        $result.Transport | Should -Be 'RdpTls'
+        $result.Negotiated | Should -BeTrue
+        $result.SelectedProtocol | Should -Be 'Ssl'
+        $result.Details.SelectedProtocolMask | Should -Be 1
+
+        Assert-MockCalled Invoke-RdpTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $TimeoutMs -eq 8000
         }
     }
 }
