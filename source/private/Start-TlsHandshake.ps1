@@ -177,14 +177,15 @@ namespace TLSleuth
     }
     catch {
         Write-Debug "[$fn] Handshake failed for ${TargetHost}: $($_.Exception.GetType().FullName)"
-        try {
-            if ($ssl) {
+        if ($ssl) {
+            try {
                 [TLSleuth.CertificateValidationCallbacksV2]::Cleanup($ssl)
-                $ssl.Dispose()
             }
-        }
-        catch {
-            Write-Debug "[$fn] Failed to dispose SslStream after handshake error: $($_.Exception.GetType().FullName)"
+            catch {
+                Write-Debug "[$fn] Failed to clean up certificate validation callback state after handshake error: $($_.Exception.GetType().FullName)"
+            }
+
+            Close-TlsResource -Resource $ssl -ResourceName 'SslStream' -OwnerName $fn
         }
 
         $errorToThrow = Resolve-TlsException -Exception $_.Exception

@@ -1,6 +1,7 @@
 BeforeAll {
     $scriptRoot = $PSScriptRoot
     if (-not $scriptRoot) { $scriptRoot = Split-Path -Parent $PSCommandPath }
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Close-TlsResource.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Close-NetworkResources.ps1')
 }
 

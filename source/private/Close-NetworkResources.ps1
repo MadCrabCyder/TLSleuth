@@ -23,18 +23,12 @@ function Close-NetworkResources {
     Write-Verbose "[$fn] Begin (SslStream=$($null -ne $sslStream), NetworkStream=$($null -ne $networkStream), TcpClient=$($null -ne $tcpClient))"
 
     try {
-        foreach ($resource in @($sslStream, $networkStream, $tcpClient)) {
-            if ($null -eq $resource) { continue }
-
-            try {
-                if ($resource -is [System.IDisposable]) {
-                    $resource.Dispose()
-                    Write-Verbose "[$fn] Disposed $($resource.GetType().FullName)"
-                }
-            }
-            catch {
-                Write-Debug "[$fn] Dispose failed: $($_.Exception.GetType().FullName)"
-            }
+        foreach ($resource in @(
+            [PSCustomObject]@{ Name = 'SslStream'; Value = $sslStream }
+            [PSCustomObject]@{ Name = 'NetworkStream'; Value = $networkStream }
+            [PSCustomObject]@{ Name = 'TcpClient'; Value = $tcpClient }
+        )) {
+            Close-TlsResource -Resource $resource.Value -ResourceName $resource.Name -OwnerName $fn
         }
     }
     finally {

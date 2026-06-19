@@ -44,12 +44,7 @@ function Connect-TcpWithTimeout {
         [PSCustomObject]@{ TcpClient = $tcp; NetworkStream = $netStream }
     }
     catch {
-        try {
-            if ($tcp) { $tcp.Dispose() }
-        }
-        catch {
-            Write-Debug "[$fn] Failed to dispose TcpClient after connection error: $($_.Exception.GetType().FullName)"
-        }
+        Close-TlsResource -Resource $tcp -ResourceName 'TcpClient' -OwnerName $fn
 
         $errorToThrow = Resolve-TlsException -Exception $_.Exception
         $throwOriginal = [object]::ReferenceEquals($errorToThrow, $_.Exception)
