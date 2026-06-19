@@ -67,16 +67,6 @@
   - Tests cover SSLRequest acceptance, rejection, and negotiation dispatch.
   - Documentation explains PostgreSQL-specific TLS negotiation behavior and limitations.
 
-### Document RDP Troubleshooting
-- Status: Planned
-- Category: Documentation
-- Complexity: Small
-- Goal: Make RDP certificate retrieval behavior, prerequisites, and common failures easy to troubleshoot.
-- Success criteria:
-  - Documentation shows `RdpTls` examples for the default RDP port and custom ports.
-  - Documentation explains firewall/connectivity failures, RDP security negotiation rejection, NLA-related caveats, and TLS handshake failures.
-  - Documentation states that RDP certificate retrieval requires the server to accept a TLS-capable RDP security negotiation.
-
 ### Add Optional RDP Integration Test
 - Status: Planned
 - Category: Test Reliability
@@ -244,6 +234,16 @@
   - Ambiguous or unsupported ports continue to require explicit `-Transport` selection or fall back to documented behavior.
   - Explicit `-Transport` values always override any inferred value.
   - Tests cover common ports, unknown ports, and explicit override behavior.
+
+### Document RDP Troubleshooting
+- Status: Complete (implemented in Unreleased)
+- Category: Documentation
+- Complexity: Small
+- Goal: Make RDP certificate retrieval behavior, prerequisites, and common failures easy to troubleshoot.
+- Success criteria:
+  - Documentation shows `RdpTls` examples for the default RDP port and custom ports.
+  - Documentation explains firewall/connectivity failures, RDP security negotiation rejection, NLA-related caveats, and TLS handshake failures.
+  - Documentation states that RDP certificate retrieval requires the server to accept a TLS-capable RDP security negotiation.
 
 ### Invoke-Build CI Baseline
 - Status: Complete (implemented in 2.3.3)

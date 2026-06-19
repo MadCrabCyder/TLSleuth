@@ -157,6 +157,9 @@ Get-TLSleuthCertificate -Hostname pop.gmail.com -Port 110 -Transport Pop3StartTl
 # Unreleased - Retrieve certificate from RDP server
 Get-TLSleuthCertificate -Hostname rdp.example.com -Port 3389 -Transport RdpTls
 
+# RDP troubleshooting
+# See docs/rdp-troubleshooting.md
+
 # New in V2.3.0 - Test protocol support on an HTTPS endpoint
 Test-TLSleuthProtocol -Hostname github.com |
   Select Protocol, ConnectionSuccessful, NegotiatedProtocol, NegotiatedCipherSuite, ErrorMessage
