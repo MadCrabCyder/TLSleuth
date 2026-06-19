@@ -187,12 +187,8 @@ namespace TLSleuth
             Write-Debug "[$fn] Failed to dispose SslStream after handshake error: $($_.Exception.GetType().FullName)"
         }
 
-        $errorToThrow = $_.Exception
-        $throwOriginal = $true
-        if ($errorToThrow -is [System.AggregateException] -and $errorToThrow.InnerException) {
-            $errorToThrow = $errorToThrow.InnerException
-            $throwOriginal = $false
-        }
+        $errorToThrow = Resolve-TlsException -Exception $_.Exception
+        $throwOriginal = [object]::ReferenceEquals($errorToThrow, $_.Exception)
 
         $null = Add-TlsErrorContext `
             -Exception $errorToThrow `

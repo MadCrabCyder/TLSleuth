@@ -5,6 +5,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Get-TlsRuntimeProtocol.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Add-TlsErrorContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTimeoutException.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-TlsException.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportNegotiationResult.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportOptionSet.ps1')
@@ -161,6 +162,31 @@ Describe 'Test-TLSleuthProtocol' {
         $successfulCount | Should -Be ($script:expectedProtocols.Count - 1)
 
         Assert-MockCalled Get-TlsHandshakeDetails -Times ($script:expectedProtocols.Count - 1) -Scope It
+    }
+
+    It 'reports the underlying TLS error when handshake failures are wrapped by task waiting' {
+        $innerMessage = 'Authentication failed, see inner exception.'
+        $inner = [System.Security.Authentication.AuthenticationException]::new($innerMessage)
+        $aggregate = [System.AggregateException]::new($inner)
+        $wrapper = [System.Management.Automation.MethodInvocationException]::new(
+            'Exception calling "Wait" with "1" argument(s): "One or more errors occurred."',
+            $aggregate
+        )
+
+        Mock Start-TlsHandshake {
+            throw $wrapper
+        } -ParameterFilter { $true }
+
+        $result = Test-TLSleuthProtocol -Hostname 'example.test' -Port 443 -TimeoutSec 10
+
+        $result.Count | Should -Be $script:expectedProtocols.Count
+        foreach ($row in $result) {
+            $row.ConnectionSuccessful | Should -BeFalse
+            $row.ErrorMessage | Should -Be $innerMessage
+            $row.ErrorMessage | Should -Not -Match 'Exception calling "Wait"'
+        }
+
+        Assert-MockCalled Get-TlsHandshakeDetails -Times 0 -Scope It
     }
 
     It 'performs SMTP STARTTLS negotiation before each protocol attempt for SmtpStartTls transport' {

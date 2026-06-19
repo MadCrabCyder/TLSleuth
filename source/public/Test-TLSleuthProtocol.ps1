@@ -80,8 +80,9 @@ function Test-TLSleuthProtocol {
                 $connectionSuccessful = $true
             }
             catch {
-                $errorMessage = $_.Exception.Message
-                Write-Debug "[$fn] Protocol $protocol failed for ${Hostname}:$Port - $errorMessage"
+                $errorToReport = Resolve-TlsException -Exception $_.Exception
+                $errorMessage = $errorToReport.Message
+                Write-Debug "[$fn] Protocol $protocol failed for ${Hostname}:$Port - $($errorToReport.GetType().FullName): $errorMessage"
             }
             finally {
                 $itemSw.Stop()
