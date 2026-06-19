@@ -60,7 +60,8 @@ function Get-TLSleuthCertificate {
             -TargetHost $TargetHost `
             -Transport $Transport `
             -SmtpEhloName $SmtpEhloName `
-            -TimeoutSec $TimeoutSec
+            -TimeoutSec $TimeoutSec `
+            -TransportSpecified:($PSBoundParameters.ContainsKey('Transport'))
 
         try {
             $connection = New-TlsConnectionContext `

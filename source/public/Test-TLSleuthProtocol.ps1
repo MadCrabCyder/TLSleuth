@@ -48,7 +48,8 @@ function Test-TLSleuthProtocol {
             -TargetHost $TargetHost `
             -Transport $Transport `
             -SmtpEhloName $SmtpEhloName `
-            -TimeoutSec $TimeoutSec
+            -TimeoutSec $TimeoutSec `
+            -TransportSpecified:($PSBoundParameters.ContainsKey('Transport'))
 
         foreach ($protocol in $availableProtocols) {
             $itemSw = [System.Diagnostics.Stopwatch]::StartNew()

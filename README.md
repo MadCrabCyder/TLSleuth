@@ -50,6 +50,11 @@ This allows TLSleuth to:
 - Upgrade the connection to TLS
 - Retrieve certificate and negotiated TLS details
 
+When `-Transport` is omitted, TLSleuth infers the transport from common
+ports: `443` uses `ImplicitTls`, `25` and `587` use `SmtpStartTls`, `143`
+uses `ImapStartTls`, `110` uses `Pop3StartTls`, and `3389` uses `RdpTls`.
+Explicit `-Transport` values always override port inference.
+
 For more information see this page: [Implicit vs Explicit TLS](https://tlsleuth.com/blog/implicit-vs-explicit-tls.html)
 
 ------------------------------------------------------------------------

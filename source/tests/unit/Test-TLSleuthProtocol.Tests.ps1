@@ -10,6 +10,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportNegotiationResult.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportOptionSet.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-TlsTransport.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsOperationContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsConnectionContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Read-TextProtocolLine.ps1')
@@ -208,6 +209,23 @@ Describe 'Test-TLSleuthProtocol' {
             -Transport 'SmtpStartTls' `
             -TimeoutSec 10 `
             -SkipCertificateValidation
+
+        Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times $script:expectedProtocols.Count -Scope It
+        Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
+    }
+
+    It 'infers SMTP STARTTLS transport from port 587 when transport is omitted' {
+        $result = Test-TLSleuthProtocol `
+            -Hostname 'mail.example.test' `
+            -Port 587 `
+            -TimeoutSec 10 `
+            -SkipCertificateValidation
+
+        $result.Count | Should -Be $script:expectedProtocols.Count
+        foreach ($row in $result) {
+            $row.Transport | Should -Be 'SmtpStartTls'
+        }
 
         Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times $script:expectedProtocols.Count -Scope It
         Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It

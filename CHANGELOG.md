@@ -1,6 +1,7 @@
 # Changelog
 ## Unreleased
 - Added `RdpTls` transport support for retrieving certificates from RDP servers after RDP security negotiation.
+- Added common-port transport inference for implicit TLS, SMTP STARTTLS, IMAP STARTTLS, POP3 STLS, and RDP TLS when `-Transport` is omitted.
 
 ## 2.3.5 (19-Jun-2026)
 - Improved `Invoke-WithRetry` so configured base exception types also match derived exceptions, and expanded its standalone help examples.

@@ -30,7 +30,9 @@ function New-TlsOperationContext {
         [string]$SmtpEhloName,
 
         [ValidateRange(1,600)]
-        [int]$TimeoutSec = 10
+        [int]$TimeoutSec = 10,
+
+        [switch]$TransportSpecified
     )
 
     $fn = $MyInvocation.MyCommand.Name
@@ -39,10 +41,14 @@ function New-TlsOperationContext {
 
     try {
         $resolvedTargetHost = if ([string]::IsNullOrWhiteSpace($TargetHost)) { $Hostname } else { $TargetHost }
+        $resolvedTransport = Resolve-TlsTransport `
+            -Port $Port `
+            -Transport $Transport `
+            -TransportSpecified:$TransportSpecified
         $timeoutMs = $TimeoutSec * 1000
 
         $transportOptions = New-TlsTransportOptionSet `
-            -Transport $Transport `
+            -Transport $resolvedTransport `
             -TimeoutMs $timeoutMs `
             -SmtpEhloName $SmtpEhloName
 
@@ -50,7 +56,7 @@ function New-TlsOperationContext {
             Hostname         = $Hostname
             Port             = $Port
             TargetHost       = $resolvedTargetHost
-            Transport        = $Transport
+            Transport        = $resolvedTransport
             TimeoutSec       = $TimeoutSec
             TimeoutMs        = $timeoutMs
             TransportOptions = $transportOptions

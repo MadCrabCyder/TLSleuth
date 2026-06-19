@@ -11,6 +11,7 @@ BeforeAll {
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Connect-TcpWithTimeout.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportNegotiationResult.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsTransportOptionSet.ps1')
+    . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Resolve-TlsTransport.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsOperationContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'New-TlsConnectionContext.ps1')
     . (Join-Path (Join-Path $scriptRoot '..\..\private') 'Read-TextProtocolLine.ps1')
@@ -198,6 +199,24 @@ Describe 'Get-TLSleuthCertificate transport selection' {
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
     }
 
+    It 'infers RDP TLS transport from port 3389 when transport is omitted' {
+        $result = Get-TLSleuthCertificate `
+            -Hostname 'rdp.example.test' `
+            -Port 3389 `
+            -TargetHost 'rdp.example.test' `
+            -TlsProtocols 'Tls12' `
+            -SkipCertificateValidation `
+            -TimeoutSec 10
+
+        $result | Should -Not -BeNullOrEmpty
+        Assert-MockCalled Invoke-RdpTlsNegotiation -Times 1 -Scope It -ParameterFilter {
+            $TimeoutMs -eq 10000
+        }
+        Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
+    }
+
     It 'does not call SMTP STARTTLS negotiation for ImplicitTls transport' {
         $null = Get-TLSleuthCertificate `
             -Hostname 'mail.example.test' `
@@ -208,6 +227,22 @@ Describe 'Get-TLSleuthCertificate transport selection' {
             -SkipCertificateValidation `
             -TimeoutSec 10
 
+        Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
+        Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
+    }
+
+    It 'does not infer RDP TLS when ImplicitTls is explicit on port 3389' {
+        $null = Get-TLSleuthCertificate `
+            -Hostname 'rdp.example.test' `
+            -Port 3389 `
+            -TargetHost 'rdp.example.test' `
+            -Transport 'ImplicitTls' `
+            -TlsProtocols 'Tls12' `
+            -SkipCertificateValidation `
+            -TimeoutSec 10
+
+        Assert-MockCalled Invoke-RdpTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-SmtpStartTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-ImapStartTlsNegotiation -Times 0 -Scope It
         Assert-MockCalled Invoke-Pop3StartTlsNegotiation -Times 0 -Scope It
