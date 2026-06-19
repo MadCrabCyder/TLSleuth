@@ -67,16 +67,6 @@
   - Tests cover SSLRequest acceptance, rejection, and negotiation dispatch.
   - Documentation explains PostgreSQL-specific TLS negotiation behavior and limitations.
 
-### Add Optional RDP Integration Test
-- Status: Planned
-- Category: Test Reliability
-- Complexity: Small
-- Goal: Allow live RDP certificate retrieval validation without making normal CI depend on a reachable RDP server.
-- Success criteria:
-  - Integration test runs only when an explicit environment variable or Invoke-Build parameter provides an RDP endpoint.
-  - Test validates that `Get-TLSleuthCertificate -Transport RdpTls` reaches RDP negotiation and TLS certificate retrieval.
-  - Default unit and integration test runs remain deterministic when no RDP endpoint is configured.
-
 ### Improve Transport Failure Examples
 - Status: Planned
 - Category: Documentation
@@ -244,6 +234,16 @@
   - Documentation shows `RdpTls` examples for the default RDP port and custom ports.
   - Documentation explains firewall/connectivity failures, RDP security negotiation rejection, NLA-related caveats, and TLS handshake failures.
   - Documentation states that RDP certificate retrieval requires the server to accept a TLS-capable RDP security negotiation.
+
+### Add Optional RDP Integration Test
+- Status: Complete (implemented in Unreleased)
+- Category: Test Reliability
+- Complexity: Small
+- Goal: Allow live RDP certificate retrieval validation without making normal CI depend on a reachable RDP server.
+- Success criteria:
+  - Integration test runs only when an explicit environment variable or Invoke-Build parameter provides an RDP endpoint.
+  - Test validates that `Get-TLSleuthCertificate -Transport RdpTls` reaches RDP negotiation and TLS certificate retrieval.
+  - Default unit and integration test runs remain deterministic when no RDP endpoint is configured.
 
 ### Invoke-Build CI Baseline
 - Status: Complete (implemented in 2.3.3)

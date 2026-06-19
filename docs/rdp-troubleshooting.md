@@ -90,3 +90,18 @@ Test-TLSleuthProtocol -Hostname rdp.example.com -Port 3389 -Transport RdpTls
 
 This returns one row per available TLS protocol so you can see which protocol
 attempts succeed or fail.
+
+## Optional Integration Test
+
+TLSleuth includes an opt-in RDP integration test. It is skipped by default so
+normal CI does not require access to an RDP server.
+
+Set `TLSLEUTH_RDP_HOST` before running integration tests. Optionally set
+`TLSLEUTH_RDP_PORT` and `TLSLEUTH_RDP_TARGETHOST`:
+
+```powershell
+$env:TLSLEUTH_RDP_HOST = 'rdp.example.com'
+$env:TLSLEUTH_RDP_PORT = '3389'
+$env:TLSLEUTH_RDP_TARGETHOST = 'rdp.example.com'
+Invoke-Build IntegrationTest
+```
