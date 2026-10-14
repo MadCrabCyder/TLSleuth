@@ -218,7 +218,7 @@
   - Refactoring does not obscure which function owns each network or TLS resource.
 
 ### Support RDP Certificate Retrieval
-- Status: Complete (implemented in Unreleased)
+- Status: Complete (implemented in 2.4.0)
 - Category: Protocol Support
 - Complexity: Large
 - Goal: Retrieve certificates from RDP servers by adding an RDP-aware transport path.
@@ -229,7 +229,7 @@
   - Documentation explains any RDP protocol limitations and runtime assumptions.
 
 ### Infer Transport From Common Ports
-- Status: Complete (implemented in Unreleased)
+- Status: Complete (implemented in 2.4.0)
 - Category: Usability
 - Complexity: Medium
 - Goal: Reduce manual transport selection by inferring the likely transport from well-known port numbers when it is safe and predictable.
@@ -240,7 +240,7 @@
   - Tests cover common ports, unknown ports, and explicit override behavior.
 
 ### Document RDP Troubleshooting
-- Status: Complete (implemented in Unreleased)
+- Status: Complete (implemented in 2.4.0)
 - Category: Documentation
 - Complexity: Small
 - Goal: Make RDP certificate retrieval behavior, prerequisites, and common failures easy to troubleshoot.
@@ -250,7 +250,7 @@
   - Documentation states that RDP certificate retrieval requires the server to accept a TLS-capable RDP security negotiation.
 
 ### Add Optional RDP Integration Test
-- Status: Complete (implemented in Unreleased)
+- Status: Complete (implemented in 2.4.0)
 - Category: Test Reliability
 - Complexity: Small
 - Goal: Allow live RDP certificate retrieval validation without making normal CI depend on a reachable RDP server.
@@ -260,7 +260,7 @@
   - Default unit and integration test runs remain deterministic when no RDP endpoint is configured.
 
 ### Improve Transport Failure Examples
-- Status: Complete (implemented in Unreleased)
+- Status: Complete (implemented in 2.4.0)
 - Category: Documentation
 - Complexity: Small
 - Goal: Help users understand common transport negotiation and TLS failure messages across supported transports.

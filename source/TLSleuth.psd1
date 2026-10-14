@@ -8,7 +8,7 @@
 RootModule = '.\TLSleuth.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.5'
+ModuleVersion = '2.4.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop','Core')
@@ -23,7 +23,7 @@ Author = 'Mad Crab Cyder'
 CompanyName = 'Mad Crab Cyder Productions'
 
 # Copyright statement for this module
-Copyright = '(c) 2025 Mad Crab Cyder. All rights reserved.'
+Copyright = '(c) 2025-2026 Mad Crab Cyder. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = @'
@@ -100,7 +100,7 @@ PrivateData = @{
         Tags = @(
             'TLS','SSL','X509','Certificate','Security','Handshake',
             'SChannel','OpenSSL','Networking','PowerShell','PSModule',
-            'Windows','Linux','macOS','PSEdition_Core'
+            'Windows','Linux','macOS','PSEdition_Core','RDP','RemoteDesktop'
         )
 
         # A URL to the license for this module.
@@ -113,7 +113,7 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/MadCrabCyder/TLSleuth/main/source/assets/TLSleuth-icon.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = '2.3.5: Improved Invoke-WithRetry exception matching and examples, added gist publishing tasks, refactored transport negotiation helpers and dispatch, consolidated timeout and error context handling, added transport registration coverage, improved protocol test error messages, and centralized TLS resource cleanup.'
+        ReleaseNotes = '2.4.0: Added RDP TLS certificate retrieval, common-port transport inference, RDP troubleshooting guidance, an opt-in live RDP integration test, and expanded transport failure documentation.'
 
     } # End of PSData hashtable
 
