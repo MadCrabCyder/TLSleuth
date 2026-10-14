@@ -31,6 +31,30 @@ engineers, and automation pipelines that need reliable TLS insight.
 
 ------------------------------------------------------------------------
 
+## Feature Highlight: RDP Certificate Inspection
+
+TLSleuth now supports inspecting certificates presented by RDP servers. RDP
+does not begin TLS immediately after the TCP connection opens, so TLSleuth uses
+the `RdpTls` transport to perform RDP security negotiation first, then starts
+the TLS handshake and returns the same structured certificate and session
+details used by other transports.
+
+``` powershell
+Get-TLSleuthCertificate -Hostname rdp.example.com -Port 3389 -Transport RdpTls
+```
+
+On the default RDP port, TLSleuth can infer the transport when `-Transport` is
+omitted:
+
+``` powershell
+Get-TLSleuthCertificate -Hostname rdp.example.com -Port 3389
+```
+
+See [docs/rdp-troubleshooting.md](docs/rdp-troubleshooting.md) for expected
+usage, common failures, and RDP security negotiation caveats.
+
+------------------------------------------------------------------------
+
 ## New Feature for Version 2 - Explicit Transport Support
 
 - Added support for specifying the transport type
@@ -73,6 +97,7 @@ For a deeper explanation of how the command works and examples of how to use it,
 
 - [TLSleuth](#tlsleuth)
   - [Features](#features)
+  - [Feature Highlight: RDP Certificate Inspection](#feature-highlight-rdp-certificate-inspection)
   - [New Feature for Version 2 - Explicit Transport Support](#new-feature-for-version-2---explicit-transport-support)
   - [New Feature for Version 2.3 - Testing Supported TLS Protocols](#new-feature-for-version-23---testing-supported-tls-protocols)
   - [Limitations and When to Use a Dedicated TLS Scanner](#limitations-and-when-to-use-a-dedicated-tls-scanner)

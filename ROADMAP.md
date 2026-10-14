@@ -34,6 +34,30 @@
   - Documentation explains that validation depends on the local trust store and OS/.NET chain-building behavior.
   - Tests cover complete-chain, missing-intermediate, and untrusted-chain scenarios using local test certificates where practical.
 
+### Replace Runtime C# Certificate Validation Callback
+- Status: Planned
+- Category: Security Compatibility
+- Complexity: Medium
+- Goal: Reduce EDR false-positive risk by replacing the runtime `Add-Type` implementation of `TLSleuth.CertificateValidationCallbacksV2` with a PowerShell delegate or closure that captures certificate validation state.
+- Success criteria:
+  - `Start-TlsHandshake` no longer compiles embedded C# at runtime for certificate validation callbacks.
+  - Certificate validation state is still captured per connection or per `SslStream` without leaking state between concurrent or repeated handshakes.
+  - `Get-TlsHandshakeDetails` continues to report `CertificateValidationPassed`, `CertificatePolicyErrors`, `CertificatePolicyErrorFlags`, and `CertificateChainStatus`.
+  - Existing public output contracts remain unchanged.
+  - Tests cover successful validation, skipped validation with captured errors, strict validation failure, and cleanup/state-isolation behavior.
+
+### Default To Strict Certificate Validation
+- Status: Planned
+- Category: Security
+- Complexity: Medium
+- Goal: Change public command defaults so certificate validation is not skipped unless the caller explicitly requests inspection of invalid certificates.
+- Success criteria:
+  - `Get-TLSleuthCertificate` and `Test-TLSleuthProtocol` no longer default `-SkipCertificateValidation` to enabled behavior.
+  - Users can still explicitly retrieve invalid or self-signed certificates with `-SkipCertificateValidation`.
+  - README examples, compatibility notes, and release notes clearly call out the behavior change and migration path.
+  - Tests cover default strict validation, explicit skip-validation behavior, and protocol-test failure reporting when validation is not skipped.
+  - The release notes identify the change as user-facing and potentially breaking for scripts that relied on the previous default.
+
 ### Support LDAP StartTLS Certificate Retrieval
 - Status: Planned
 - Category: Protocol Support
